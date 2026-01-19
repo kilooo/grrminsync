@@ -328,11 +328,11 @@ def main():
     print("Welcome to the Withings to Garmin Sync Tool!")
     
     if not config.WITHINGS_CLIENT_ID or not config.WITHINGS_CLIENT_SECRET:
-        print("Error: Withings Credentials not found. Please set them in .env file OR via Environment Variables (WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET).")
+        print("Error: Withings Credentials not found. Please configure your Withings credentials.")
         return
         
     if not config.GARMIN_EMAIL or not config.GARMIN_PASSWORD:
-        print("Error: Garmin Credentials not found. Please set them in .env file OR via Environment Variables (GARMIN_EMAIL, GARMIN_PASSWORD).")
+        print("Error: Garmin Credentials not found. Please configure your Garmin credentials.")
         return
 
     # 2. Authenticate Withings
