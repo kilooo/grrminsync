@@ -1,6 +1,6 @@
 services:
   garmin-sync:
-    image: ghcr.io/kilooo/garmin-body-comp-import:latest
+    image: ghcr.io/kilooo/garminsync:latest
     # build: .  # Uncomment this and comment out 'image' to build locally for development
     container_name: garmin-sync
     ports:
