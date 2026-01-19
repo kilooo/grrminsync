@@ -6,11 +6,11 @@
 A simple tool to sync body composition data (Weight, Fat %, Muscle Mass, etc.) from Withings to Garmin Connect.
 
 <p align="center">
-  <img src="screenshots/Screenshot_mobile_1.png" width="18%" />
-  <img src="screenshots/Screenshot_mobile_2.png" width="18%" />
-  <img src="screenshots/Screenshot_mobile_3.png" width="18%" />
-  <img src="screenshots/Screenshot_mobile_4.png" width="18%" />
-  <img src="screenshots/Screenshot_mobile_5.png" width="18%" />
+  <img src="screenshots/screenshot_mobile_1.png" width="18%" />
+  <img src="screenshots/screenshot_mobile_2.png" width="18%" />
+  <img src="screenshots/screenshot_mobile_3.png" width="18%" />
+  <img src="screenshots/screenshot_mobile_4.png" width="18%" />
+  <img src="screenshots/screenshot_mobile_5.png" width="18%" />
 </p>
 
 ## Prerequisites
