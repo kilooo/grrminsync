@@ -1,0 +1,29 @@
+# Environment Variables (Secrets)
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDEs
+.vscode/
+.idea/
+
+# Distribution / Packaging
+build/
+dist/
+*.spec
+# App Data
+withings_tokens.pkl
+
+# Database
+data/
+*.db

@@ -1,0 +1,22 @@
+services:
+  garmin-sync:
+    image: ghcr.io/kilooo/garmin-body-comp-import:latest
+    # build: .  # Uncomment this and comment out 'image' to build locally for development
+    container_name: garmin-sync
+    ports:
+      - "5000:5000"
+    volumes:
+      # /app/data contains: 
+      # 1. garmin_import.db (Sync History)
+      # 2. credentials.json (Your Keys)
+      # 3. withings_tokens.pkl (Session Tokens)
+      - ./data:/app/data
+    environment:
+      # OPTIONAL: You can set these if you prefer env vars over the Web UI.
+      # If not set, the app will use the values you save in the Web UI.
+      - WITHINGS_CLIENT_ID
+      - WITHINGS_CLIENT_SECRET
+      - WITHINGS_REDIRECT_URI
+      - GARMIN_EMAIL
+      - GARMIN_PASSWORD
+    restart: unless-stopped

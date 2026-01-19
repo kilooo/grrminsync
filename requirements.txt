@@ -1,0 +1,7 @@
+
+garminconnect>=0.2.38
+python-dotenv
+requests
+flask
+tzlocal
+Flask-APScheduler

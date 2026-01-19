@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Historical Data Sync</h1>
+<p style="color: #64748b;">Import past data from Withings to Garmin.</p>
+
+<div class="card">
+    <h2>Select Time Range</h2>
+    <p style="color:#64748b; margin-bottom: 20px;">
+        Define how many days back you want to sync. <br>
+        <strong>Warning:</strong> Syncing a long period may take some time.
+    </p>
+
+    <div style="margin-bottom: 20px;">
+        <label>Sync last </label>
+        <input type="number" id="days" value="30" min="1" max="3650" style="width: 100px; display: inline-block;">
+        <label> days</label>
+    </div>
+
+    <button id="sync-btn" class="btn" onclick="triggerHistoricalSync()">Start Import</button>
+
+    <div id="progress-container" style="margin-top: 20px; display: none;">
+        <div style="background: #e2e8f0; border-radius: 999px; height: 10px; overflow: hidden;">
+            <div id="progress-bar" style="background: #2563eb; width: 0%; height: 100%; transition: width 0.3s;"></div>
+        </div>
+        <div id="progress-text" style="margin-top: 10px; font-weight: 600; color: #475569;">Starting...</div>
+    </div>
+
+    <div id="status"
+        style="margin-top: 20px; white-space: pre-wrap; text-align: left; background: #1e293b; color: #cbd5e1; padding: 15px; border-radius: 8px; display: none; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto;">
+    </div>
+</div>
+
+<script>
+    let pollInterval;
+
+    function triggerHistoricalSync() {
+        const days = document.getElementById('days').value;
+        if (!days || days < 1) { alert('Please enter a valid number of days'); return; }
+
+        // UI Reset
+        document.getElementById('sync-btn').disabled = true;
+        document.getElementById('progress-container').style.display = 'block';
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-text').innerText = 'Starting sync...';
+        document.getElementById('status').style.display = 'block';
+        document.getElementById('status').innerText = 'Initializing...';
+
+        fetch('/historical/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ days: parseInt(days) })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'started') {
+                    // Start polling (GLOBAL progress, no job ID needed)
+                    pollProgress();
+                } else {
+                    alert('Error: ' + data.message);
+                    document.getElementById('sync-btn').disabled = false;
+                }
+            })
+            .catch(err => {
+                alert('Request failed: ' + err);
+                document.getElementById('sync-btn').disabled = false;
+            });
+    }
+
+    function pollProgress() {
+        // Clear any existing interval to prevent duplicates
+        if (pollInterval) clearInterval(pollInterval);
+
+        pollInterval = setInterval(() => {
+            fetch('/progress')
+                .then(r => r.json())
+                .then(data => {
+                    // data = { status: "running/completed/failed", current: X, total: Y, log: "..." }
+
+                    // Update Progress Bar
+                    if (data.total > 0) {
+                        const pct = Math.round((data.current / data.total) * 100);
+                        document.getElementById('progress-bar').style.width = pct + '%';
+                        document.getElementById('progress-text').innerText = `Processed ${data.current} / ${data.total} days (${pct}%)`;
+                    }
+
+                    // Update Logs
+                    // Server returns full log string in 'log' field
+                    if (data.log) {
+                        document.getElementById('status').innerText = data.log;
+                        const statusDiv = document.getElementById('status');
+                        statusDiv.scrollTop = statusDiv.scrollHeight;
+                    }
+
+                    if (data.status === 'Success' || data.status === 'Failed' || data.status === 'completed' || data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        document.getElementById('sync-btn').disabled = false;
+                        document.getElementById('progress-text').innerText = (data.status === 'Success' || data.status === 'completed') ? '✅ Sync Completed!' : '❌ Sync Failed';
+                    }
+                });
+        }, 1000);
+    }
+</script>
+{% endblock %}
