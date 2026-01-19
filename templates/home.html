@@ -55,20 +55,28 @@
             .then(data => {
                 const el = document.getElementById('schedule-status');
                 if (data.enabled) {
-                    // Server sends UTC hour/minute. Convert to Local.
-                    const date = new Date();
-                    date.setUTCHours(data.hour);
-                    date.setUTCMinutes(data.minute);
+                    // Server sends Local hour/minute.
+                    const h = data.hour;
+                    const m = data.minute;
+                    const tz = data.timezone || 'Unknown';
 
                     // Format for display (AM/PM)
+                    // We construct a date just for formatting, but we treat the hour/minute as local
+                    const date = new Date();
+                    date.setHours(h);
+                    date.setMinutes(m);
+
                     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    el.innerText = '✅ Scheduled daily at ' + timeStr;
+                    el.innerText = `✅ Scheduled daily at ${timeStr} (${tz})`;
                     el.style.color = 'green';
 
                     // Format for input (HH:mm 24-hour format required for input type="time")
-                    const localH = String(date.getHours()).padStart(2, '0');
-                    const localM = String(date.getMinutes()).padStart(2, '0');
+                    const localH = String(h).padStart(2, '0');
+                    const localM = String(m).padStart(2, '0');
                     document.getElementById('sched-time').value = `${localH}:${localM}`;
+                } else if (!data.enabled && data.timezone) {
+                    el.innerText = `❌ No schedule set (Server Timezone: ${data.timezone})`;
+                    el.style.color = '#ef4444';
                 } else {
                     el.innerText = '❌ No schedule set';
                     el.style.color = '#ef4444';
@@ -82,19 +90,12 @@
         if (!timeInput) { alert('Invalid time'); return; }
 
         const [h, m] = timeInput.split(':').map(Number);
-
-        // Convert Local to UTC
-        const date = new Date();
-        date.setHours(h);
-        date.setMinutes(m);
-
-        const utcH = date.getUTCHours();
-        const utcM = date.getUTCMinutes();
-
+        
+        // Send as-is (Local Server Time)
         fetch('/schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hour: utcH, minute: utcM })
+            body: JSON.stringify({ hour: h, minute: m })
         })
             .then(r => r.json())
             .then(data => {

@@ -28,10 +28,12 @@ print("DEBUG: Flask app created.", flush=True)
 
 # Scheduler Setup
 try:
-    scheduler = BackgroundScheduler()
+    # Explicitly use local timezone
+    local_tz = tzlocal.get_localzone()
+    scheduler = BackgroundScheduler(timezone=str(local_tz))
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown())
-    print("DEBUG: Scheduler started.", flush=True)
+    print(f"DEBUG: Scheduler started with timezone: {local_tz}", flush=True)
 except Exception as e:
     print(f"DEBUG: Scheduler failed to start: {e}", flush=True)
     sys.exit(1)
@@ -251,9 +253,12 @@ def run_sync():
 @app.route('/schedule', methods=['GET'])
 def get_schedule():
     conf = load_schedule()
+    result = {"timezone": str(tzlocal.get_localzone())}
     if conf and conf.get('enabled'):
-        return jsonify(conf)
-    return jsonify({"enabled": False})
+        result.update(conf)
+        return jsonify(result)
+    result["enabled"] = False
+    return jsonify(result)
 
 @app.route('/schedule', methods=['POST'])
 def set_schedule_endpoint():

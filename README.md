@@ -28,7 +28,7 @@ Create a file named `docker-compose.yml` in a new folder and paste the following
 ```yaml
 services:
   garmin-sync:
-    image: ghcr.io/kilooo/garmin-body-comp-import:latest
+    image: ghcr.io/kilooo/garminsync:latest
     container_name: garmin-sync
     ports:
       - "5000:5000"
