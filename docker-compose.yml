@@ -1,8 +1,8 @@
 services:
-  garmin-sync:
-    image: ghcr.io/kilooo/garminsync:latest
+  grrmin-sync:
+    image: ghcr.io/kilooo/grrminsync:latest
     # build: .  # Uncomment this and comment out 'image' to build locally for development
-    container_name: garmin-sync
+    container_name: grrmin-sync
     ports:
       - "5000:5000"
     volumes:
