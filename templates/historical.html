@@ -75,17 +75,20 @@
             fetch('/progress')
                 .then(r => r.json())
                 .then(data => {
-                    // data = { status: "running/completed/failed", current: X, total: Y, log: "..." }
+                    // data = { status: "running/completed/failed", current: X, total: Y, log: "...", message: "..." }
 
-                    // Update Progress Bar
-                    if (data.total > 0) {
-                        const pct = Math.round((data.current / data.total) * 100);
-                        document.getElementById('progress-bar').style.width = pct + '%';
-                        document.getElementById('progress-text').innerText = `Processed ${data.current} / ${data.total} days (${pct}%)`;
+                    // Update Progress Bar and Text
+                    if (data.status === 'running' || data.status === 'idle') {
+                        if (data.total > 0) {
+                            const pct = Math.round((data.current / data.total) * 100);
+                            document.getElementById('progress-bar').style.width = pct + '%';
+                            document.getElementById('progress-text').innerText = `Syncing: ${data.current} / ${data.total} measurements (${pct}%)`;
+                        } else {
+                            document.getElementById('progress-text').innerText = data.message || 'Initializing...';
+                        }
                     }
 
                     // Update Logs
-                    // Server returns full log string in 'log' field
                     if (data.log) {
                         document.getElementById('status').innerText = data.log;
                         const statusDiv = document.getElementById('status');
