@@ -116,18 +116,30 @@ def get_sync_history():
         print(f"Error reading history: {e}")
     return entries
 
-def run_sync_logic(target_func=sync_app.main, *args, **kwargs):
-    """Shared logic for running sync and capturing output."""
+def run_sync_logic(target_func=sync_app.main, progress_dict=None, *args, **kwargs):
+    """Shared logic for running sync and capturing output. Optionally updates progress_dict['log'] live."""
     f = io.StringIO()
     status = "Failed"
+    
+    class LiveBuffer:
+        def __init__(self, original_f, p_dict):
+            self.f = original_f
+            self.p_dict = p_dict
+        def write(self, s):
+            self.f.write(s)
+            if self.p_dict is not None:
+                self.p_dict['log'] += s
+        def flush(self):
+            self.f.flush()
+
     try:
-        with contextlib.redirect_stdout(f):
-            # Check for credentials implicitly handled into main or we should check?
-            # sync_app.main() handles missing creds by printing error, not raising usually unless input needed.
-            # But the headless input fix raises EOFError.
+        buffer = f
+        if progress_dict is not None:
+            buffer = LiveBuffer(f, progress_dict)
+            
+        with contextlib.redirect_stdout(buffer):
             target_func(*args, **kwargs)
         status = "Success"
-        # Simple heuristic: check if output contains "Success" or "Error"
         output = f.getvalue()
         if "Error" in output or "Failed" in output or "Traceback" in output:
              status = "Failed"
@@ -135,12 +147,14 @@ def run_sync_logic(target_func=sync_app.main, *args, **kwargs):
     except Exception as e:
         output = f.getvalue() + f"\nBIG ERROR: {str(e)}"
         status = "Failed"
+        if progress_dict is not None:
+            progress_dict['log'] = output
         
     return status, output
 
 def scheduled_sync_job():
     print(f"Running scheduled sync...")
-    status, output = run_sync_logic(sync_app.main)
+    status, output = run_sync_logic(target_func=sync_app.main)
     append_history(f"Scheduled ({status})", output)
     print(f"Scheduled sync finished: {status}")
 
@@ -190,6 +204,7 @@ def _run_sync_thread(days):
         SYNC_PROGRESS['status'] = 'running'
         SYNC_PROGRESS['current'] = current
         SYNC_PROGRESS['total'] = total
+        SYNC_PROGRESS['message'] = "Syncing measurements..."
         
     print(f"Starting background sync for {days} days")
     
@@ -198,13 +213,14 @@ def _run_sync_thread(days):
         "status": "running",
         "current": 0,
         "total": 0,
-        "message": "Starting...",
+        "message": "Initializing...",
         "log": ""
     }
     
     # Run Logic
     status, output = run_sync_logic(
         sync_historical.run_historical_sync, 
+        progress_dict=SYNC_PROGRESS,
         days=days, 
         progress_callback=progress_callback
     )
