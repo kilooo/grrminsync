@@ -356,5 +356,38 @@ def main():
     sync_data(token_data, garmin)
     print("\nSync Complete!")
 
+
+def upload_manual_data(weight, fat_ratio=None, muscle_mass=None, bone_mass=None, hydration_percent=None, bmi=None, timestamp=None):
+    """
+    Uploads a single set of body composition data to Garmin.
+    """
+    if not config.GARMIN_EMAIL or not config.GARMIN_PASSWORD:
+        raise Exception("Garmin credentials not configured.")
+
+    try:
+        print("Connecting to Garmin for manual upload...")
+        garmin = Garmin(config.GARMIN_EMAIL, config.GARMIN_PASSWORD)
+        garmin.login()
+        
+        if not timestamp:
+            local_tz = tzlocal.get_localzone()
+            timestamp = datetime.now(local_tz).isoformat()
+            
+        print(f"Uploading manual data: Weight={weight}, Fat={fat_ratio}, BMI={bmi} at {timestamp}")
+        
+        garmin.add_body_composition(
+            timestamp=timestamp,
+            weight=weight,
+            percent_fat=fat_ratio,
+            percent_hydration=hydration_percent,
+            bone_mass=bone_mass,
+            muscle_mass=muscle_mass,
+            bmi=bmi
+        )
+        return True
+    except Exception as e:
+        print(f"Manual upload failed: {e}")
+        raise e
+
 if __name__ == "__main__":
     main()

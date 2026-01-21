@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+    <div>
+        <h1>Manual Entry</h1>
+        <p style="color: #64748b;">Record your metrics directly to Garmin Connect.</p>
+    </div>
+    <div
+        style="background: rgba(37, 99, 235, 0.1); padding: 10px 20px; border-radius: 99px; color: var(--primary-color); font-weight: 600; font-size: 0.875rem;">
+        No Withings Required
+    </div>
+</div>
+
+<div class="card" style="max-width: 600px;">
+    <div
+        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
+        <h2 style="margin: 0; border: none; padding: 0;">Body Metrics</h2>
+
+        <!-- Unit Selector Segmented Control -->
+        <div style="background: #f1f5f9; padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
+            <label
+                style="cursor: pointer; padding: 6px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;"
+                id="unit-kg-label">
+                <input type="radio" name="unit" value="kg" checked style="display: none;" onchange="updateUnits('kg')">
+                Metric (kg)
+            </label>
+            <label
+                style="cursor: pointer; padding: 6px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 600; transition: all 0.2s; color: #64748b;"
+                id="unit-lbs-label">
+                <input type="radio" name="unit" value="lbs" style="display: none;" onchange="updateUnits('lbs')">
+                Imperial (lbs)
+            </label>
+        </div>
+    </div>
+
+    <form id="manual-form">
+        <input type="hidden" name="selected_unit" id="selected_unit" value="kg">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+            <div class="input-group">
+                <label for="timestamp" style="display:block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">Date
+                    & Time</label>
+                <input type="datetime-local" id="timestamp" name="timestamp" style="background: #f1f5f9;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="input-group">
+                    <label for="weight"
+                        style="display:block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">Weight (<span
+                            class="unit-label">kg</span>)
+                        *</label>
+                    <input type="number" id="weight" name="weight" step="0.01" required placeholder="0.00">
+                </div>
+                <div class="input-group">
+                    <label for="fat_ratio"
+                        style="display:block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">Body Fat
+                        (%)</label>
+                    <input type="number" id="fat_ratio" name="fat_ratio" step="0.1" placeholder="0.0">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="input-group">
+                    <label for="muscle_mass"
+                        style="display:block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">Muscle Mass
+                        (<span class="unit-label">kg</span>)</label>
+                    <input type="number" id="muscle_mass" name="muscle_mass" step="0.1" placeholder="0.0">
+                </div>
+                <div class="input-group">
+                    <label for="bone_mass"
+                        style="display:block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">Bone Mass
+                        (<span class="unit-label">kg</span>)</label>
+                    <input type="number" id="bone_mass" name="bone_mass" step="0.1" placeholder="0.0">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="input-group">
+                    <label for="hydration"
+                        style="display:block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">Hydration
+                        (%)</label>
+                    <input type="number" id="hydration" name="hydration" step="0.1" placeholder="0.0">
+                </div>
+                <div class="input-group">
+                    <label for="bmi" style="display:block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">BMI
+                        (Optional)</label>
+                    <input type="number" id="bmi" name="bmi" step="0.1" placeholder="0.0">
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <button type="submit" id="sync-btn" class="btn"
+                style="width: 100%; padding: 15px; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span id="btn-icon">🚀</span> <span id="btn-text">Sync to Garmin</span>
+            </button>
+        </div>
+    </form>
+
+    <div id="status-container" style="margin-top: 25px; display: none; animation: fadeIn 0.3s ease-out;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 12px; border-radius: 8px;"
+            id="status-box">
+            <div id="status-icon" style="font-size: 1.25rem;">⏳</div>
+            <div id="status-text" style="font-weight: 600; font-size: 0.95rem;">Syncing your results...</div>
+        </div>
+        <div id="status-log"
+            style="white-space: pre-wrap; background: #0f172a; color: #94a3b8; padding: 15px; border-radius: 8px; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 12px; max-height: 200px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05);">
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .input-group input::placeholder {
+        color: #cbd5e1;
+    }
+
+    .success-box {
+        background-color: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+
+    .error-box {
+        background-color: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .pending-box {
+        background-color: #eff6ff;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+    }
+
+    .unit-active {
+        background: white;
+        color: var(--primary-color) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+</style>
+
+<script>
+    // Set default date to now
+    document.addEventListener('DOMContentLoaded', () => {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('timestamp').value = now.toISOString().slice(0, 16);
+
+        // Restore unit preference
+        const savedUnit = localStorage.getItem('weight_unit') || 'kg';
+        updateUnits(savedUnit, false); // Don't save on restore
+
+        // Set the radio button state manually as well, just in case
+        if (savedUnit === 'lbs') {
+            document.querySelector('input[name="unit"][value="lbs"]').checked = true;
+        } else {
+            document.querySelector('input[name="unit"][value="kg"]').checked = true;
+        }
+    });
+
+    function updateUnits(unit, save = true) {
+        if (save) {
+            localStorage.setItem('weight_unit', unit);
+        }
+        // Update hidden field
+        document.getElementById('selected_unit').value = unit;
+
+        // Update labels
+        const labels = document.querySelectorAll('.unit-label');
+        labels.forEach(l => l.innerText = unit);
+
+        // Update Toggle UI
+        const kgLabel = document.getElementById('unit-kg-label');
+        const lbsLabel = document.getElementById('unit-lbs-label');
+
+        if (unit === 'kg') {
+            kgLabel.classList.add('unit-active');
+            lbsLabel.classList.remove('unit-active');
+            lbsLabel.style.color = '#64748b';
+            kgLabel.style.color = 'var(--primary-color)';
+        } else {
+            lbsLabel.classList.add('unit-active');
+            kgLabel.classList.remove('unit-active');
+            kgLabel.style.color = '#64748b';
+            lbsLabel.style.color = 'var(--primary-color)';
+        }
+    }
+
+    document.getElementById('manual-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('sync-btn');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnText = document.getElementById('btn-text');
+        const statusContainer = document.getElementById('status-container');
+        const statusBox = document.getElementById('status-box');
+        const statusIcon = document.getElementById('status-icon');
+        const statusText = document.getElementById('status-text');
+        const statusLog = document.getElementById('status-log');
+
+        btn.disabled = true;
+        btnIcon.innerText = '⌛';
+        btnText.innerText = 'Processing...';
+
+        statusContainer.style.display = 'block';
+        statusBox.className = 'pending-box';
+        statusIcon.innerText = '⏳';
+        statusText.innerText = 'Uploading metrics to Garmin Connect...';
+        statusLog.innerText = 'Initializing connection to Garmin services...';
+
+        const formData = new FormData(this);
+        const data = {};
+        formData.forEach((value, key) => {
+            if (value) data[key] = value;
+        });
+
+        // Convert datetime-local to ISO format with LOCAL OFFSET
+        // We want to preserve the "Wall Clock" time the user entered, but attach the correct timezone offset.
+        if (data.timestamp) {
+            let ts = data.timestamp;
+            // data.timestamp from input is usually "YYYY-MM-DDTHH:mm"
+            if (ts.length === 16) ts += ":00"; // Add seconds if missing
+
+            // Get local timezone offset from browser
+            const now = new Date();
+            const offsetMins = now.getTimezoneOffset();
+            const sign = offsetMins > 0 ? '-' : '+';
+            const absMins = Math.abs(offsetMins);
+            const pad = (n) => (n < 10 ? '0' + n : n);
+            const h = pad(Math.floor(absMins / 60));
+            const m = pad(absMins % 60);
+
+            data.timestamp = `${ts}${sign}${h}:${m}`;
+            // Example result: "2023-10-27T22:15:00-05:00"
+        }
+
+        fetch('/manual/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+            .then(r => r.json())
+            .then(res => {
+                btn.disabled = false;
+                btnIcon.innerText = '🚀';
+                btnText.innerText = 'Sync to Garmin';
+
+                if (res.status === 'Success') {
+                    statusBox.className = 'success-box';
+                    statusIcon.innerText = '✅';
+                    statusText.innerText = 'Measurement Synced Successfully!';
+                    statusLog.innerText = res.output;
+                } else {
+                    statusBox.className = 'error-box';
+                    statusIcon.innerText = '❌';
+                    statusText.innerText = 'Sync Failed';
+                    statusLog.innerText = res.output;
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btnIcon.innerText = '🚀';
+                btnText.innerText = 'Sync to Garmin';
+                statusBox.className = 'error-box';
+                statusIcon.innerText = '🚫';
+                statusText.innerText = 'Connection Error';
+                statusLog.innerText = 'Request failed: ' + err;
+            });
+    });
+</script>
+{% endblock %}
