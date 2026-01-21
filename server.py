@@ -196,6 +196,10 @@ def view_history():
 def historical_page():
     return render_template('historical.html', active_page='historical')
 
+@app.route('/manual')
+def manual_entry_page():
+    return render_template('manual.html', active_page='manual')
+
 def _run_sync_thread(days):
     global SYNC_PROGRESS
     
@@ -265,6 +269,62 @@ def run_sync():
     append_history(f"Manual ({status})", output)
     
     return jsonify({"status": status, "output": output})
+
+@app.route('/manual/sync', methods=['POST'])
+def run_manual_sync():
+    data = request.json
+    
+    try:
+        weight = float(data.get('weight'))
+        fat_ratio = float(data.get('fat_ratio')) if data.get('fat_ratio') else None
+        muscle_mass = float(data.get('muscle_mass')) if data.get('muscle_mass') else None
+        bone_mass = float(data.get('bone_mass')) if data.get('bone_mass') else None
+        hydration = float(data.get('hydration')) if data.get('hydration') else None
+        bmi = float(data.get('bmi')) if data.get('bmi') else None
+        timestamp = data.get('timestamp') # ISO format expected or None
+        
+        # Handle Unit Conversion
+        unit = data.get('selected_unit', 'kg')
+        if unit == 'lbs':
+            # 1 lb = 0.45359237 kg
+            lb_to_kg = 0.45359237
+            weight *= lb_to_kg
+            if muscle_mass: muscle_mass *= lb_to_kg
+            if bone_mass: bone_mass *= lb_to_kg
+            print(f"Converted lbs to kg: Weight={weight:.2f}")
+        
+        # If hydration is mass and weight is provided, convert to % for Garmin?
+        # Garmin API usually expects percent_hydration.
+        # Let's check if the user provides hydration as a percentage or mass.
+        # We'll assume percentage for now, or add a toggle.
+        
+        # Garmin login can take 5-10 seconds.
+        print(f"DEBUG: Starting manual upload. Timestamp={timestamp}, Weight={weight} ({unit})")
+        
+        # Actually, let's just do it synchronously for now to keep it simple, 
+        # but the UI will show a loading spinner.
+        
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):
+            sync_app.upload_manual_data(
+                weight=weight,
+                fat_ratio=fat_ratio,
+                muscle_mass=muscle_mass,
+                bone_mass=bone_mass,
+                hydration_percent=hydration,
+                bmi=bmi,
+                timestamp=timestamp
+            )
+        status = "Success"
+        output = f.getvalue() or "Manual sync successful."
+        append_history(f"Manual Entry ({status})", output)
+        
+        return jsonify({"status": status, "output": output})
+        
+    except Exception as e:
+        error_msg = f"Failed: {str(e)}"
+        append_history("Manual Entry (Failed)", error_msg)
+        return jsonify({"status": "Failed", "output": error_msg}), 500
 
 @app.route('/schedule', methods=['GET'])
 def get_schedule():
