@@ -27,3 +27,6 @@ withings_tokens.pkl
 # Database
 data/
 *.db
+
+# Docker-Compose
+docker-compose.yml

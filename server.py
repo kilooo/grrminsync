@@ -181,7 +181,8 @@ except Exception as e:
 
 @app.route('/')
 def index():
-    return render_template('home.html', active_page='home')
+    history = get_sync_history()[:3]
+    return render_template('home.html', active_page='home', history=history)
 
 @app.route('/credentials')
 def credentials_page():
