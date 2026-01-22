@@ -4,6 +4,50 @@
 <h1>Dashboard</h1>
 <p style="color: #64748b;">Manage your daily sync operations.</p>
 
+<!-- Recent History Card -->
+<div class="card">
+    <h2>Recent Sync History</h2>
+    <table
+        style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <thead>
+            <tr style="background-color: #f1f5f9; text-align: left;">
+                <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Time</th>
+                <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Status</th>
+                <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in history %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px 15px;">{{ entry.timestamp }}</td>
+                <td
+                    style="padding: 12px 15px; color: {{ 'green' if 'Success' in entry.status else 'red' }}; font-weight: bold;">
+                    {{ entry.status }}
+                </td>
+                <td style="padding: 12px 15px;">
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;"
+                        onclick="toggleLog(this, {{ loop.index }})">Show Log</button>
+                </td>
+            </tr>
+            <tr id="log-row-{{ loop.index }}" style="display:none; background-color: #f8fafc;">
+                <td colspan="3" style="padding: 0;">
+                    <div
+                        style="background: #1e293b; color: #cbd5e1; padding: 15px; margin: 0; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">
+                        {{ entry.log }}</div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" style="text-align:center; padding: 20px;">No history yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div style="margin-top: 15px; text-align: right;">
+        <a href="/history" style="text-decoration: none; color: #2563eb; font-weight: 500;">View Full History →</a>
+    </div>
+</div>
+
 <!-- Manual Sync Card -->
 <div class="card">
     <h2>Manual Sync</h2>
@@ -34,6 +78,17 @@
 
 {% block scripts %}
 <script>
+    function toggleLog(btn, index) {
+        var row = document.getElementById('log-row-' + index);
+        if (row.style.display === 'none') {
+            row.style.display = 'table-row';
+            btn.textContent = 'Hide Log';
+        } else {
+            row.style.display = 'none';
+            btn.textContent = 'Show Log';
+        }
+    }
+
     function triggerSync() {
         const statusDiv = document.getElementById('status');
         statusDiv.style.display = 'block';
@@ -90,7 +145,7 @@
         if (!timeInput) { alert('Invalid time'); return; }
 
         const [h, m] = timeInput.split(':').map(Number);
-        
+
         // Send as-is (Local Server Time)
         fetch('/schedule', {
             method: 'POST',
