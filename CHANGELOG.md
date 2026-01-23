@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/kilooo/grrminsync/compare/v1.2.0...v1.2.1) (2026-01-23)
+
+
+### Bug Fixes
+
+* reworked error handling and error logging for potential credential leakage. ([5605c39](https://github.com/kilooo/grrminsync/commit/5605c39002aeb3b70c4d64d8d5fab4ef9cd0dd10))
+
 # [1.2.0](https://github.com/kilooo/grrminsync/compare/v1.1.0...v1.2.0) (2026-01-22)
 
 
