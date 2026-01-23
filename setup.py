@@ -70,7 +70,7 @@ GARMIN_PASSWORD={garmin_password}
         print("\n[SUCCESS] Setup complete! You can now run 'docker-compose up -d'")
         
     except Exception as e:
-        print(f"\n[ERROR] Setup failed: {e}")
+        print(f"\n[ERROR] Setup failed. Error type: {type(e).__name__}")
         sys.exit(1)
 
 if __name__ == "__main__":

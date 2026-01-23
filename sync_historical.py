@@ -36,7 +36,7 @@ def get_latest_height(access_token):
                         if measure['type'] == 4:
                             return get_measure_value(measure) # Returns height in meters
     except Exception as e:
-        print(f"Warning: Could not fetch height: {e}")
+        print(f"Warning: Could not fetch height. Error type: {type(e).__name__}")
     return None
 
 def sync_data(token_data, garmin_client, days=30, progress_callback=None):
@@ -68,13 +68,13 @@ def sync_data(token_data, garmin_client, days=30, progress_callback=None):
     response = requests.get(url, headers=headers, params=params)
     
     if response.status_code != 200:
-        print(f"Error fetching data from Withings: {response.text}")
+        print(f"Error fetching data from Withings. Status: {response.status_code}")
         return
         
     data = response.json()
     
     if data.get('status') != 0:
-        print(f"Withings API Error: {data}")
+        print(f"Withings API Error. Status: {data.get('status')}")
         return
         
     body = data.get('body', {})
@@ -168,7 +168,7 @@ def sync_data(token_data, garmin_client, days=30, progress_callback=None):
                 print(f"  Successfully synced.")
                 success_count += 1
             except Exception as e:
-                print(f"  Failed to upload: {e}")
+                print(f"  Failed to upload. Error type: {type(e).__name__}")
                 fail_count += 1
                 
             # Avoid hitting rate limits (Garmin doesn't like rapid fire requests sometimes)
@@ -194,7 +194,7 @@ def run_historical_sync(days=30, progress_callback=None):
         print("Connecting to Withings...")
         token_data = authenticate_withings()
     except Exception as e:
-        print(f"Withings Auth Failed: {e}")
+        print(f"Withings Auth Failed. Error type: {type(e).__name__}")
         return
 
     try:
@@ -202,7 +202,7 @@ def run_historical_sync(days=30, progress_callback=None):
         garmin = Garmin(config.GARMIN_EMAIL, config.GARMIN_PASSWORD)
         garmin.login()
     except Exception as e:
-        print(f"Garmin Auth Failed: {e}")
+        print(f"Garmin Auth Failed. Check credentials. Error type: {type(e).__name__}")
         return
 
     sync_data(token_data, garmin, days=days, progress_callback=progress_callback)

@@ -29,7 +29,7 @@ def save_credentials(token_data):
             pickle.dump(token_data, f)
         print("Credentials saved successfully.")
     except Exception as e:
-        print(f"Error saving credentials: {e}")
+        print(f"Error saving credentials. Error type: {type(e).__name__}")
 
 def load_credentials():
     """Loads token data from file if it exists."""
@@ -38,7 +38,7 @@ def load_credentials():
             with open(TOKEN_FILE, 'rb') as f:
                 return pickle.load(f)
         except Exception as e:
-            print(f"Error loading credentials: {e}")
+            print(f"Error loading credentials. Error type: {type(e).__name__}")
     return None
 
 class SimpleWithingsAuth:
@@ -79,9 +79,9 @@ class SimpleWithingsAuth:
                 print("Token exchange successful.")
                 return resp_json.get('body')
             else:
-                raise Exception(f"Token exchange failed: {resp_json}")
+                raise Exception(f"Token exchange failed. Status: {resp_json}")
         else:
-            raise Exception(f"HTTP Error during token exchange: {response.status_code} - {response.text}")
+            raise Exception(f"HTTP Error during token exchange: {response.status_code}")
 
     def refresh_token(self, refresh_token):
         data = {
@@ -98,9 +98,9 @@ class SimpleWithingsAuth:
                 print("Token refresh successful.")
                 return resp_json.get('body')
             else:
-                raise Exception(f"Token refresh failed: {resp_json}")
+                raise Exception(f"Token refresh failed. Status: {resp_json}")
         else:
-            raise Exception(f"HTTP Error during refresh: {response.status_code} - {response.text}")
+            raise Exception(f"HTTP Error during refresh: {response.status_code}")
 
 def get_withings_credentials():
     auth = SimpleWithingsAuth(config.WITHINGS_CLIENT_ID, config.WITHINGS_CLIENT_SECRET, config.WITHINGS_REDIRECT_URI)
@@ -156,7 +156,7 @@ def authenticate_withings():
                 save_credentials(new_token_data)
                 return new_token_data
             except Exception as e:
-                print(f"Token refresh failed ({e}), requesting new login.")
+                print(f"Token refresh failed ({type(e).__name__}), requesting new login.")
         else:
              print("No refresh token found, requesting new login.")
         
@@ -193,7 +193,7 @@ def get_latest_height(access_token):
                         if measure['type'] == 4:
                             return get_measure_value(measure) # Returns height in meters
     except Exception as e:
-        print(f"Warning: Could not fetch height: {e}")
+        print(f"Warning: Could not fetch height. Error type: {type(e).__name__}")
     return None
 
 def sync_data(token_data, garmin_client):
@@ -219,13 +219,13 @@ def sync_data(token_data, garmin_client):
     response = requests.get(url, headers=headers, params=params)
     
     if response.status_code != 200:
-        print(f"Error fetching data from Withings: {response.text}")
+        print(f"Error fetching data from Withings. Status: {response.status_code}")
         return
         
     data = response.json()
     
     if data.get('status') != 0:
-        print(f"Withings API Error: {data}")
+        print(f"Withings API Error. Status: {data.get('status')}")
         return
         
     body = data.get('body', {})
@@ -320,7 +320,7 @@ def sync_data(token_data, garmin_client):
             )
             print(f"  Successfully synced to Garmin!")
         except Exception as e:
-            print(f"  Failed to upload to Garmin: {e}")
+            print(f"  Failed to upload to Garmin. Error type: {type(e).__name__}")
     else:
         print("  Skipping group (No weight found).")
 
@@ -340,7 +340,7 @@ def main():
         print("Connecting to Withings...")
         token_data = authenticate_withings()
     except Exception as e:
-        print(f"Withings Auth Failed: {e}")
+        print(f"Withings Auth Failed. Error type: {type(e).__name__}")
         return
 
     # 3. Authenticate Garmin
@@ -349,12 +349,15 @@ def main():
         garmin = Garmin(config.GARMIN_EMAIL, config.GARMIN_PASSWORD)
         garmin.login()
     except Exception as e:
-        print(f"Garmin Auth Failed: {e}")
+        print(f"Garmin Auth Failed. Check credentials. Error type: {type(e).__name__}")
         return
 
     # 4. Sync
-    sync_data(token_data, garmin)
-    print("\nSync Complete!")
+    try:
+        sync_data(token_data, garmin)
+        print("\nSync Complete!")
+    except Exception as e:
+        print(f"Sync Logic Failed. Error type: {type(e).__name__}")
 
 
 def upload_manual_data(weight, fat_ratio=None, muscle_mass=None, bone_mass=None, hydration_percent=None, bmi=None, timestamp=None):
@@ -386,7 +389,7 @@ def upload_manual_data(weight, fat_ratio=None, muscle_mass=None, bone_mass=None,
         )
         return True
     except Exception as e:
-        print(f"Manual upload failed: {e}")
+        print(f"Manual upload failed. Error type: {type(e).__name__}")
         raise e
 
 if __name__ == "__main__":

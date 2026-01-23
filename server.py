@@ -35,7 +35,7 @@ try:
     atexit.register(lambda: scheduler.shutdown())
     print(f"DEBUG: Scheduler started with timezone: {local_tz}", flush=True)
 except Exception as e:
-    print(f"DEBUG: Scheduler failed to start: {e}", flush=True)
+    print(f"DEBUG: Scheduler failed to start. Error type: {type(e).__name__}", flush=True)
     sys.exit(1)
 
 # Database Setup
@@ -45,7 +45,7 @@ if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
         print(f"DEBUG: Created data directory at {DATA_DIR}", flush=True)
     except Exception as e:
-        print(f"DEBUG: Failed to create data directory: {e}", flush=True)
+        print(f"DEBUG: Failed to create data directory. Error type: {type(e).__name__}", flush=True)
 
 DB_PATH = os.path.join(DATA_DIR, "garmin_import.db")
 
@@ -61,7 +61,7 @@ def init_db():
             conn.commit()
         print("DEBUG: Database initialized success.", flush=True)
     except Exception as e:
-        print(f"DEBUG: Database initialization failed: {e}", flush=True)
+        print(f"DEBUG: Database initialization failed. Error type: {type(e).__name__}", flush=True)
         sys.exit(1)
 
 init_db()
@@ -113,7 +113,7 @@ def get_sync_history():
             rows = c.fetchall()
             entries = [dict(row) for row in rows]
     except Exception as e:
-        print(f"Error reading history: {e}")
+        print(f"Error reading history. Error type: {type(e).__name__}")
     return entries
 
 def run_sync_logic(target_func=sync_app.main, progress_dict=None, *args, **kwargs):
@@ -145,7 +145,7 @@ def run_sync_logic(target_func=sync_app.main, progress_dict=None, *args, **kwarg
              status = "Failed"
              
     except Exception as e:
-        output = f.getvalue() + f"\nBIG ERROR: {str(e)}"
+        output = f.getvalue() + f"\nBIG ERROR: {type(e).__name__}"
         status = "Failed"
         if progress_dict is not None:
             progress_dict['log'] = output
@@ -176,7 +176,7 @@ try:
     else:
         print("DEBUG: No active schedule to restore.", flush=True)
 except Exception as e:
-    print(f"DEBUG: Failed to restore schedule: {e}", flush=True)
+    print(f"DEBUG: Failed to restore schedule. Error type: {type(e).__name__}", flush=True)
     # Don't exit, just continue without schedule
 
 @app.route('/')
@@ -323,7 +323,7 @@ def run_manual_sync():
         return jsonify({"status": status, "output": output})
         
     except Exception as e:
-        error_msg = f"Failed: {str(e)}"
+        error_msg = f"Failed. Error type: {type(e).__name__}"
         append_history("Manual Entry (Failed)", error_msg)
         return jsonify({"status": "Failed", "output": error_msg}), 500
 
@@ -420,7 +420,7 @@ def auth_withings_callback():
         return "<h1>Success!</h1><p>Withings connected successfully.</p><script>setTimeout(function(){window.location.href='/';}, 2000);</script>"
         
     except Exception as e:
-        return f"<h1>Setup Failed</h1><p>{str(e)}</p><a href='/'>Back</a>"
+        return f"<h1>Setup Failed</h1><p>Error type: {type(e).__name__}</p><a href='/'>Back</a>"
 
 @app.route('/config/withings', methods=['POST'])
 def save_withings_config():
@@ -466,7 +466,7 @@ def save_withings_config():
         
         return jsonify({"message": "Withings Credentials Saved!"})
     except Exception as e:
-        return jsonify({"message": f"Error saving: {str(e)}"}), 500
+        return jsonify({"message": f"Error saving. Error type: {type(e).__name__}"}), 500
 
 @app.route('/config/garmin', methods=['POST'])
 def save_garmin_config():
@@ -509,7 +509,7 @@ def save_garmin_config():
         
         return jsonify({"message": "Garmin Credentials Saved!"})
     except Exception as e:
-        return jsonify({"message": f"Error saving: {str(e)}"}), 500
+        return jsonify({"message": f"Error saving. Error type: {type(e).__name__}"}), 500
 
 if __name__ == '__main__':
     print("Starting server on 0.0.0.0:5000", flush=True)
