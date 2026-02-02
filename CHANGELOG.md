@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/kilooo/grrminsync/compare/v1.3.0...v1.3.1) (2026-02-02)
+
+
+### Bug Fixes
+
+* Updated app to handle incorrect Garmin 2FA codes gracefully. ([7206646](https://github.com/kilooo/grrminsync/commit/72066466f0ae5287f554da0732531bbb72277a7b))
+
 # [1.3.0](https://github.com/kilooo/grrminsync/compare/v1.2.1...v1.3.0) (2026-02-02)
 
 
