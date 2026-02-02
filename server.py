@@ -20,6 +20,10 @@ from config import WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT
 import sync_historical
 import sqlite3
 import threading
+from garminconnect import Garmin
+
+GARMIN_AUTH_SESSION = None
+
 
 print("DEBUG: Imports complete. Initializing App...", flush=True)
 
@@ -468,48 +472,170 @@ def save_withings_config():
     except Exception as e:
         return jsonify({"message": f"Error saving. Error type: {type(e).__name__}"}), 500
 
+def _persist_garmin_creds(email, password):
+    # Load existing creds (to preserve withings if it exists)
+    creds_path = os.path.join(DATA_DIR, 'credentials.json')
+    creds = {}
+    if os.path.exists(creds_path):
+        try:
+            with open(creds_path, 'r') as f:
+                creds = json.load(f)
+        except:
+            pass
+            
+    creds["garmin_email"] = email
+    creds["garmin_password"] = password
+    
+    with open(creds_path, 'w') as f:
+        json.dump(creds, f)
+        
+    # Update running config
+    import config
+    config.GARMIN_EMAIL = email
+    config.GARMIN_PASSWORD = password
+    
+    # Also need to update `sync_app`'s reference to it
+    sync_app.GARMIN_EMAIL = email
+    sync_app.GARMIN_PASSWORD = password
+    
+    # Also update local globals if used
+    global GARMIN_EMAIL, GARMIN_PASSWORD
+    GARMIN_EMAIL = email
+    GARMIN_PASSWORD = password
+
+def garmin_login_thread(email, password):
+    global GARMIN_AUTH_SESSION
+    
+    def prompt_mfa():
+        if not GARMIN_AUTH_SESSION: return ""
+        GARMIN_AUTH_SESSION['status'] = 'mfa_waiting'
+        GARMIN_AUTH_SESSION['mfa_wait_event'].set() # Signal main thread that we are waiting
+        
+        # Wait for user input
+        got_code = GARMIN_AUTH_SESSION['mfa_event'].wait(timeout=120) # 2 mins to enter code
+        if not got_code or not GARMIN_AUTH_SESSION.get('mfa_code'):
+             raise Exception("MFA Timed out")
+        return GARMIN_AUTH_SESSION['mfa_code']
+
+    try:
+        # We use a custom tokenstore location to ensure persistence across reboots/container recreations if mapped
+        token_dir = os.path.join(DATA_DIR, '.garth')
+        # garth (underlying lib) expects the home directory usage or we can try to pass a specific dir?
+        # Garmin.login() takes 'tokenstore' which is expected to be a directory path usually, or defaults to ~/.garth
+        # We will use ~/.garth behavior but redirected if possible? 
+        # Actually garth allows expanding `~`. 
+        # But simply: init Garmin, then login.
+        
+        # NOTE: garminconnect < 0.2.x behaved differently. We have 0.2.38.
+        # We should try to force the token store to our data dir.
+        
+        # Ensure directory exists, otherwise garth/GarminConnect might fail to read/write
+        if not os.path.exists(token_dir):
+            try:
+                os.makedirs(token_dir)
+            except Exception as e:
+                print(f"Error creating token dir: {e}") 
+
+        g = Garmin(email, password, prompt_mfa=prompt_mfa)
+        
+        # If token dir is empty or missing specific file, don't pass it to login() or it crashes.
+        # Instead, log in with default (temp) store, then DUMP to our target dir.
+        token_file = os.path.join(token_dir, 'oauth1_token.json')
+        if os.path.exists(token_file):
+            g.login(tokenstore=token_dir)
+        else:
+            g.login() # Uses default ~/.garth
+            # Now save to our custom dir
+            g.garth.dump(token_dir)
+        
+        GARMIN_AUTH_SESSION['result'] = {'success': True}
+    except Exception as e:
+        if GARMIN_AUTH_SESSION:
+            GARMIN_AUTH_SESSION['result'] = {'success': False, 'error': str(e)}
+        # also signal wait event just in case it failed before mfa
+        if GARMIN_AUTH_SESSION:
+             GARMIN_AUTH_SESSION['mfa_wait_event'].set() 
+        
+    if GARMIN_AUTH_SESSION:
+        GARMIN_AUTH_SESSION['result_event'].set()
+
 @app.route('/config/garmin', methods=['POST'])
 def save_garmin_config():
+    global GARMIN_AUTH_SESSION
+    
     email = request.form.get('email')
     password = request.form.get('password')
+    mfa_code = request.form.get('mfa_code')
     
-    if not email or not password:
-        return jsonify({"message": "Email and Password are required"}), 400
-        
-    try:
-        # Load existing creds (to preserve withings if it exists)
-        creds_path = os.path.join(DATA_DIR, 'credentials.json')
-        creds = {}
-        if os.path.exists(creds_path):
-            try:
-                with open(creds_path, 'r') as f:
-                    creds = json.load(f)
-            except:
-                pass
-                
-        creds["garmin_email"] = email
-        creds["garmin_password"] = password
-        
-        with open(creds_path, 'w') as f:
-            json.dump(creds, f)
+    if not email: # Password might be empty if already saved? No, we require it currently.
+        return jsonify({"message": "Email is required"}), 400
+
+    # CASE 1: MFA Code provided -> Existing session expected
+    if mfa_code:
+        if not GARMIN_AUTH_SESSION or GARMIN_AUTH_SESSION['status'] != 'mfa_waiting':
+            return jsonify({"message": "Session expired or invalid. Please try again."}), 400
             
-        # Update running config
-        import config
-        config.GARMIN_EMAIL = email
-        config.GARMIN_PASSWORD = password
+        # Pass the code to the waiting thread
+        GARMIN_AUTH_SESSION['mfa_code'] = mfa_code
+        GARMIN_AUTH_SESSION['mfa_event'].set()
         
-        # Also need to update `sync_app`'s reference to it
-        sync_app.GARMIN_EMAIL = email
-        sync_app.GARMIN_PASSWORD = password
+        # Wait for result
+        got_result = GARMIN_AUTH_SESSION['result_event'].wait(timeout=20)
         
-        # Also update local globals if used
-        global GARMIN_EMAIL, GARMIN_PASSWORD
-        GARMIN_EMAIL = email
-        GARMIN_PASSWORD = password
+        if not got_result:
+             GARMIN_AUTH_SESSION = None
+             return jsonify({"message": "Timeout waiting for Garmin verification."}), 500
+             
+        res = GARMIN_AUTH_SESSION['result']
+        if res.get('success'):
+             _persist_garmin_creds(email, password)
+             GARMIN_AUTH_SESSION = None
+             return jsonify({"message": "Garmin Connected Successfully!"})
+        else:
+             GARMIN_AUTH_SESSION = None
+             return jsonify({"message": f"Login Failed: {res.get('error')}"}), 400
+
+    # CASE 2: No MFA Code -> Start Login
+    if GARMIN_AUTH_SESSION and GARMIN_AUTH_SESSION['status'] == 'mfa_waiting':
+        # User might be retrying or something? Reset session.
+        GARMIN_AUTH_SESSION = None
+
+    if not password:
+         return jsonify({"message": "Password is required"}), 400
+
+    GARMIN_AUTH_SESSION = {
+        'mfa_event': threading.Event(),
+        'mfa_wait_event': threading.Event(),
+        'result_event': threading.Event(),
+        'status': 'init',
+        'result': None,
+        'mfa_code': None
+    }
+    
+    t = threading.Thread(target=garmin_login_thread, args=(email, password))
+    t.daemon = True # ensure it doesn't block shutdown
+    t.start()
+    
+    # Wait up to 20 seconds for something to happen
+    start = time.time()
+    while time.time() - start < 20:
+        if GARMIN_AUTH_SESSION['status'] == 'mfa_waiting':
+            return jsonify({"mfa_required": True})
         
-        return jsonify({"message": "Garmin Credentials Saved!"})
-    except Exception as e:
-        return jsonify({"message": f"Error saving. Error type: {type(e).__name__}"}), 500
+        if GARMIN_AUTH_SESSION['result_event'].is_set():
+             # Finished
+             res = GARMIN_AUTH_SESSION['result']
+             if res.get('success'):
+                 _persist_garmin_creds(email, password)
+                 GARMIN_AUTH_SESSION = None
+                 return jsonify({"message": "Garmin Connected Successfully!"})
+             else:
+                 GARMIN_AUTH_SESSION = None
+                 return jsonify({"message": f"Login Failed: {res.get('error')}"}), 401
+        time.sleep(0.5)
+
+    GARMIN_AUTH_SESSION = None
+    return jsonify({"message": "Timeout connecting to Garmin (Backend)."}), 504
 
 if __name__ == '__main__':
     print("Starting server on 0.0.0.0:5000", flush=True)

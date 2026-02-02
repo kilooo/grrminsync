@@ -347,7 +347,17 @@ def main():
     try:
         print("Connecting to Garmin...")
         garmin = Garmin(config.GARMIN_EMAIL, config.GARMIN_PASSWORD)
-        garmin.login()
+        token_dir = os.path.join(DATA_DIR, '.garth')
+        if not os.path.exists(token_dir):
+            os.makedirs(token_dir, exist_ok=True)
+            
+        token_file = os.path.join(token_dir, 'oauth1_token.json')
+        if os.path.exists(token_file):
+            garmin.login(tokenstore=token_dir)
+        else:
+             print("Token file not found, logging in via default store...")
+             garmin.login()
+             garmin.garth.dump(token_dir)
     except Exception as e:
         print(f"Garmin Auth Failed. Check credentials. Error type: {type(e).__name__}")
         return
@@ -370,7 +380,16 @@ def upload_manual_data(weight, fat_ratio=None, muscle_mass=None, bone_mass=None,
     try:
         print("Connecting to Garmin for manual upload...")
         garmin = Garmin(config.GARMIN_EMAIL, config.GARMIN_PASSWORD)
-        garmin.login()
+        token_dir = os.path.join(DATA_DIR, '.garth')
+        if not os.path.exists(token_dir):
+            os.makedirs(token_dir, exist_ok=True)
+            
+        token_file = os.path.join(token_dir, 'oauth1_token.json')
+        if os.path.exists(token_file):
+            garmin.login(tokenstore=token_dir)
+        else:
+             garmin.login()
+             garmin.garth.dump(token_dir)
         
         if not timestamp:
             local_tz = tzlocal.get_localzone()
