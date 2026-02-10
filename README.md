@@ -39,6 +39,8 @@ services:
       # 3. withings_tokens.pkl (Session Tokens)
       - ./data:/app/data
     environment:
+      # Set your local Timezone e.g. Europe/Berlin
+      - TZ=Europe/Berlin
       # OPTIONAL: You can set these if you prefer env vars over the Web UI.
       # If not set, the app will use the values you save in the Web UI.
       - WITHINGS_CLIENT_ID
