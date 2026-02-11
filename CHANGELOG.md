@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/kilooo/grrminsync/compare/v1.3.1...v1.4.0) (2026-02-11)
+
+
+### Features
+
+* Implement support for multiple auto-sync schedules. ([f16816d](https://github.com/kilooo/grrminsync/commit/f16816d9cb8d3e795d1dfc5e6422d0ad3bb28e1b))
+
 ## [1.3.1](https://github.com/kilooo/grrminsync/compare/v1.3.0...v1.3.1) (2026-02-02)
 
 
