@@ -58,19 +58,31 @@
     </div>
 </div>
 
-<!-- Auto-Sync Card -->
+<!-- Auto-Sync Schedules Card -->
 <div class="card">
-    <h2>Auto-Sync Schedule</h2>
-    <div id="schedule-status" style="margin-bottom: 20px; font-weight: 600; color: #475569;">Loading schedule...</div>
+    <h2>Auto-Sync Schedules</h2>
+    <div id="schedule-status" style="margin-bottom: 20px; font-weight: 600; color: #475569;">Loading schedules...</div>
 
-    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-        <label>Time (Local):</label>
-        <input type="time" id="sched-time" style="width: auto;">
-    </div>
+    <!-- List of Schedules -->
+    <table id="schedule-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px; display: none;">
+        <thead>
+            <tr style="background-color: #f1f5f9; text-align: left;">
+                <th style="padding: 8px 10px; border-bottom: 1px solid #ddd;">Time (Local)</th>
+                <th style="padding: 8px 10px; border-bottom: 1px solid #ddd;">Action</th>
+            </tr>
+        </thead>
+        <tbody id="schedule-list">
+            <!-- Populated via JS -->
+        </tbody>
+    </table>
 
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button class="btn" onclick="setSchedule()">Set Daily Schedule</button>
-        <button class="btn btn-danger" onclick="disableSchedule()">Disable Schedule</button>
+    <div style="border-top: 1px solid #eee; padding-top: 15px;">
+        <h3>Add New Schedule</h3>
+        <div class="input-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <label>Time:</label>
+            <input type="time" id="sched-time" style="width: auto;">
+        </div>
+        <button class="btn" onclick="addSchedule()">Add Schedule</button>
     </div>
 </div>
 
@@ -108,38 +120,49 @@
         fetch('/schedule')
             .then(r => r.json())
             .then(data => {
-                const el = document.getElementById('schedule-status');
-                if (data.enabled) {
-                    // Server sends Local hour/minute.
-                    const h = data.hour;
-                    const m = data.minute;
-                    const tz = data.timezone || 'Unknown';
+                const statusEl = document.getElementById('schedule-status');
+                const tableEl = document.getElementById('schedule-table');
+                const listEl = document.getElementById('schedule-list');
 
-                    // Format for display (AM/PM)
-                    // We construct a date just for formatting, but we treat the hour/minute as local
-                    const date = new Date();
-                    date.setHours(h);
-                    date.setMinutes(m);
+                const timezone = data.timezone || 'Unknown';
+                const schedules = data.schedules || [];
 
-                    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    el.innerText = `✅ Scheduled daily at ${timeStr} (${tz})`;
-                    el.style.color = 'green';
+                listEl.innerHTML = ''; // Clear list
 
-                    // Format for input (HH:mm 24-hour format required for input type="time")
-                    const localH = String(h).padStart(2, '0');
-                    const localM = String(m).padStart(2, '0');
-                    document.getElementById('sched-time').value = `${localH}:${localM}`;
-                } else if (!data.enabled && data.timezone) {
-                    el.innerText = `❌ No schedule set (Server Timezone: ${data.timezone})`;
-                    el.style.color = '#ef4444';
+                if (schedules.length === 0) {
+                    statusEl.innerText = `No active schedules (Server Timezone: ${timezone})`;
+                    statusEl.style.color = '#64748b';
+                    tableEl.style.display = 'none';
                 } else {
-                    el.innerText = '❌ No schedule set';
-                    el.style.color = '#ef4444';
+                    statusEl.innerText = `Active Schedules (Server Timezone: ${timezone})`;
+                    statusEl.style.color = 'green';
+                    tableEl.style.display = 'table';
+
+                    schedules.forEach(sched => {
+                        const h = sched.hour;
+                        const m = sched.minute;
+
+                        // Format time
+                        const date = new Date();
+                        date.setHours(h);
+                        date.setMinutes(m);
+                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                        const row = document.createElement('tr');
+                        row.style.borderBottom = '1px solid #eee';
+                        row.innerHTML = `
+                            <td style="padding: 8px 10px;">${timeStr}</td>
+                            <td style="padding: 8px 10px;">
+                                <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteSchedule(${sched.id})">Remove</button>
+                            </td>
+                        `;
+                        listEl.appendChild(row);
+                    });
                 }
             });
     }
 
-    function setSchedule() {
+    function addSchedule() {
         const timeInput = document.getElementById('sched-time').value;
 
         if (!timeInput) { alert('Invalid time'); return; }
@@ -154,16 +177,19 @@
         })
             .then(r => r.json())
             .then(data => {
-                alert(data.message);
+                // alert(data.message); // Optional
                 updateScheduleDisplay();
             });
     }
 
-    function disableSchedule() {
-        fetch('/schedule', { method: 'DELETE' })
+    function deleteSchedule(id) {
+        fetch('/schedule', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        })
             .then(r => r.json())
             .then(data => {
-                alert(data.message);
                 updateScheduleDisplay();
             });
     }
