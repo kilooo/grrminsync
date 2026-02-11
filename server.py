@@ -60,13 +60,41 @@ def init_db():
             c = conn.cursor()
             c.execute('''CREATE TABLE IF NOT EXISTS sync_history
                          (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, status TEXT, log TEXT)''')
+            
+            # Smart migration: Check if we can insert multiple rows.
+            needs_migration = False
+            # Check if table exists
+            c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='schedule_config'")
+            if c.fetchone():
+                # Check schema by checking sql for "CHECK (id = 1)"
+                c.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_config'")
+                sql = c.fetchone()[0]
+                if "CHECK (id = 1)" in sql:
+                    needs_migration = True
+            
+            if needs_migration:
+                print("DEBUG: Migrating schedule_config...", flush=True)
+                try:
+                    # Rename old
+                    c.execute("ALTER TABLE schedule_config RENAME TO schedule_config_old")
+                    # Create new
+                    c.execute('''CREATE TABLE schedule_config
+                                 (id INTEGER PRIMARY KEY AUTOINCREMENT, hour INTEGER, minute INTEGER, enabled BOOLEAN)''')
+                    # Copy data
+                    c.execute("INSERT INTO schedule_config (hour, minute, enabled) SELECT hour, minute, enabled FROM schedule_config_old")
+                    # Drop old
+                    c.execute("DROP TABLE schedule_config_old")
+                except Exception as e:
+                    print(f"DEBUG: Migration warning: {e}", flush=True)
+
+            # Ensure table exists if it didn't
             c.execute('''CREATE TABLE IF NOT EXISTS schedule_config
-                         (id INTEGER PRIMARY KEY CHECK (id = 1), hour INTEGER, minute INTEGER, enabled BOOLEAN)''')
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT, hour INTEGER, minute INTEGER, enabled BOOLEAN)''')
+            
             conn.commit()
         print("DEBUG: Database initialized success.", flush=True)
     except Exception as e:
         print(f"DEBUG: Database initialization failed. Error type: {type(e).__name__}", flush=True)
-        sys.exit(1)
 
 init_db()
 
@@ -79,20 +107,26 @@ SYNC_PROGRESS = {
     "log": ""
 }
 
-def save_schedule(hour, minute):
+def add_schedule(hour, minute):
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO schedule_config (id, hour, minute, enabled) VALUES (1, ?, ?, 1)", (hour, minute))
+        c.execute("INSERT INTO schedule_config (hour, minute, enabled) VALUES (?, ?, 1)", (hour, minute))
+        conn.commit()
+        return c.lastrowid
+
+def delete_schedule(schedule_id):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM schedule_config WHERE id=?", (schedule_id,))
         conn.commit()
 
-def load_schedule():
+def get_schedules():
     with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute("SELECT hour, minute, enabled FROM schedule_config WHERE id=1")
-        row = c.fetchone()
-        if row:
-            return {"hour": row[0], "minute": row[1], "enabled": bool(row[2])}
-    return None
+        c.execute("SELECT id, hour, minute, enabled FROM schedule_config")
+        rows = c.fetchall()
+        return [dict(row) for row in rows]
 
 def append_history(status, log_output):
     """Appends a new entry to the history database, keeping only the last 50."""
@@ -163,22 +197,24 @@ def scheduled_sync_job():
     print(f"Scheduled sync finished: {status}")
 
 # Restore schedule on startup
-print("DEBUG: Attempting to restore schedule...", flush=True)
+print("DEBUG: Attempting to restore schedules...", flush=True)
 try:
-    saved_schema = load_schedule()
-    if saved_schema and saved_schema.get('enabled'):
-        h = saved_schema['hour']
-        m = saved_schema['minute']
-        scheduler.add_job(
-            func=scheduled_sync_job,
-            trigger=CronTrigger(hour=h, minute=m),
-            id='daily_sync',
-            name='daily_sync_job',
-            replace_existing=True
-        )
-        print(f"DEBUG: Restored schedule: Daily at {h}:{m:02d}", flush=True)
-    else:
-        print("DEBUG: No active schedule to restore.", flush=True)
+    schedules = get_schedules()
+    count = 0
+    for s in schedules:
+        if s.get('enabled'):
+            h = s['hour']
+            m = s['minute']
+            sid = s['id']
+            scheduler.add_job(
+                func=scheduled_sync_job,
+                trigger=CronTrigger(hour=h, minute=m),
+                id=f'daily_sync_{sid}',
+                name=f'daily_sync_job_{sid}',
+                replace_existing=True
+            )
+            count += 1
+    print(f"DEBUG: Restored {count} schedules.", flush=True)
 except Exception as e:
     print(f"DEBUG: Failed to restore schedule. Error type: {type(e).__name__}", flush=True)
     # Don't exit, just continue without schedule
@@ -332,17 +368,15 @@ def run_manual_sync():
         return jsonify({"status": "Failed", "output": error_msg}), 500
 
 @app.route('/schedule', methods=['GET'])
-def get_schedule():
-    conf = load_schedule()
-    result = {"timezone": str(tzlocal.get_localzone())}
-    if conf and conf.get('enabled'):
-        result.update(conf)
-        return jsonify(result)
-    result["enabled"] = False
-    return jsonify(result)
+def get_schedule_endpoint():
+    schedules = get_schedules()
+    return jsonify({
+        "timezone": str(tzlocal.get_localzone()),
+        "schedules": schedules
+    })
 
 @app.route('/schedule', methods=['POST'])
-def set_schedule_endpoint():
+def add_schedule_endpoint():
     data = request.json
     h = data.get('hour')
     m = data.get('minute')
@@ -350,29 +384,34 @@ def set_schedule_endpoint():
     if h is None or m is None:
         return jsonify({"message": "Invalid time"}), 400
         
+    sid = add_schedule(h, m)
+    
     scheduler.add_job(
         func=scheduled_sync_job,
         trigger=CronTrigger(hour=h, minute=m),
-        id='daily_sync',
-        name='daily_sync_job',
+        id=f'daily_sync_{sid}',
+        name=f'daily_sync_job_{sid}',
         replace_existing=True
     )
     
-    save_schedule(h, m)
-    return jsonify({"message": f"Scheduled daily sync at {h:02d}:{m:02d}"})
+    return jsonify({"message": f"Scheduled daily sync at {h:02d}:{m:02d}", "id": sid})
 
 @app.route('/schedule', methods=['DELETE'])
 def remove_schedule_endpoint():
-    job = scheduler.get_job('daily_sync')
+    data = request.json
+    sid = data.get('id')
+    
+    if not sid:
+        return jsonify({"message": "Schedule ID required"}), 400
+
+    job_id = f'daily_sync_{sid}'
+    job = scheduler.get_job(job_id)
     if job:
         job.remove()
     
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("UPDATE schedule_config SET enabled=0 WHERE id=1")
-        conn.commit()
+    delete_schedule(sid)
         
-    return jsonify({"message": "Schedule disabled"})
+    return jsonify({"message": "Schedule removed"})
 
 @app.route('/auth/withings/login')
 def auth_withings_login():
