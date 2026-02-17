@@ -12,9 +12,25 @@
     </p>
 
     <div style="margin-bottom: 20px;">
-        <label>Sync last </label>
-        <input type="number" id="days" value="30" min="1" max="3650" style="width: 100px; display: inline-block;">
-        <label> days</label>
+        <div style="margin-bottom: 10px;">
+            <input type="radio" id="mode-days" name="sync-mode" value="days" checked onchange="toggleMode()">
+            <label for="mode-days">Last X Days</label>
+            <input type="radio" id="mode-dates" name="sync-mode" value="dates" onchange="toggleMode()" style="margin-left: 20px;">
+            <label for="mode-dates">Date Range</label>
+        </div>
+
+        <div id="input-days" style="margin-top: 10px;">
+            <label>Sync last </label>
+            <input type="number" id="days" value="30" min="1" max="3650" style="width: 100px; display: inline-block;">
+            <label> days</label>
+        </div>
+
+        <div id="input-dates" style="margin-top: 10px; display: none;">
+            <label>From: </label>
+            <input type="date" id="from-date" style="margin-right: 15px;">
+            <label>To: </label>
+            <input type="date" id="to-date">
+        </div>
     </div>
 
     <button id="sync-btn" class="btn" onclick="triggerHistoricalSync()">Start Import</button>
@@ -34,9 +50,31 @@
 <script>
     let pollInterval;
 
+    function toggleMode() {
+        const isDays = document.getElementById('mode-days').checked;
+        document.getElementById('input-days').style.display = isDays ? 'block' : 'none';
+        document.getElementById('input-dates').style.display = isDays ? 'none' : 'block';
+    }
+
     function triggerHistoricalSync() {
-        const days = document.getElementById('days').value;
-        if (!days || days < 1) { alert('Please enter a valid number of days'); return; }
+        const isDays = document.getElementById('mode-days').checked;
+        let payload = {};
+
+        if (isDays) {
+            const days = document.getElementById('days').value;
+            if (!days || days < 1) { alert('Please enter a valid number of days'); return; }
+            payload = { days: parseInt(days) };
+        } else {
+            const fromDate = document.getElementById('from-date').value;
+            const toDate = document.getElementById('to-date').value;
+            
+            if (!fromDate) { alert('Please select a start date'); return; }
+            
+            payload = { 
+                from_date: fromDate,
+                to_date: toDate // Optional, server handles None
+            };
+        }
 
         // UI Reset
         document.getElementById('sync-btn').disabled = true;
@@ -49,7 +87,7 @@
         fetch('/historical/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ days: parseInt(days) })
+            body: JSON.stringify(payload)
         })
             .then(r => r.json())
             .then(data => {

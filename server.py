@@ -241,7 +241,7 @@ def historical_page():
 def manual_entry_page():
     return render_template('manual.html', active_page='manual')
 
-def _run_sync_thread(days):
+def _run_sync_thread(days, **kwargs):
     global SYNC_PROGRESS
     
     # Callback to update granular progress
@@ -267,11 +267,18 @@ def _run_sync_thread(days):
         sync_historical.run_historical_sync, 
         progress_dict=SYNC_PROGRESS,
         days=days, 
+        from_date=kwargs.get('from_date'),
+        to_date=kwargs.get('to_date'),
         progress_callback=progress_callback
     )
     
     # Save to history
-    append_history(f"Historical {days}d ({status})", output)
+    if kwargs.get('from_date'):
+        msg = f"Historical {kwargs.get('from_date')} to {kwargs.get('to_date')} ({status})"
+    else:
+        msg = f"Historical {days}d ({status})"
+        
+    append_history(msg, output)
     
     # Update Final State
     SYNC_PROGRESS['status'] = status # "Success" or "Failed"
@@ -287,9 +294,11 @@ def run_historical_sync_endpoint():
 
     data = request.json
     days = data.get('days', 30)
+    from_date = data.get('from_date')
+    to_date = data.get('to_date')
     
     # Start Thread
-    t = threading.Thread(target=_run_sync_thread, args=(days,))
+    t = threading.Thread(target=_run_sync_thread, args=(days,), kwargs={'from_date': from_date, 'to_date': to_date})
     t.start()
     
     return jsonify({"status": "started", "message": "Sync started in background"})

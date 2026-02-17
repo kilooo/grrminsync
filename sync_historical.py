@@ -39,7 +39,7 @@ def get_latest_height(access_token):
         print(f"Warning: Could not fetch height. Error type: {type(e).__name__}")
     return None
 
-def sync_data(token_data, garmin_client, days=30, progress_callback=None):
+def sync_data(token_data, garmin_client, days=30, start_date=None, end_date=None, progress_callback=None):
     access_token = token_data['access_token']
     
     print("\nFetching latest height for BMI calculation...")
@@ -49,21 +49,36 @@ def sync_data(token_data, garmin_client, days=30, progress_callback=None):
     else:
         print("  No height found. BMI will not be calculated.")
 
-    print(f"\nFetching data from Withings for the last {days} days...")
+    # Determine Start/End Timestamps
+    startdate = None
+    enddate = None
     
-    # Calculate start date (Epoch)
-    now = datetime.now(timezone.utc)
-    start_date_obj = now - timedelta(days=days)
-    startdate = int(start_date_obj.timestamp())
+    if start_date:
+        # Expecting timestamp intergers
+        startdate = start_date
+        enddate = end_date # Optional, defaults to now if None
+        
+        # Friendly logging
+        sd_str = datetime.fromtimestamp(startdate).strftime('%Y-%m-%d')
+        ed_str = datetime.fromtimestamp(enddate).strftime('%Y-%m-%d') if enddate else "Now"
+        print(f"\nFetching data from Withings from {sd_str} to {ed_str}...")
+        
+    else:
+        # Legacy behavior: Last X days
+        print(f"Fetching data from Withings for the last {days} days...")
+        now = datetime.now(timezone.utc)
+        start_date_obj = now - timedelta(days=days)
+        startdate = int(start_date_obj.timestamp())
     
     url = "https://wbsapi.withings.net/measure"
     headers = {'Authorization': f'Bearer {access_token}'}
     params = {
         'action': 'getmeas',
-        'meastype': '1,6,76,77,88,12', 
-        'category': 1,
         'startdate': startdate
     }
+    
+    if enddate:
+        params['enddate'] = enddate
     
     response = requests.get(url, headers=headers, params=params)
     
@@ -81,23 +96,26 @@ def sync_data(token_data, garmin_client, days=30, progress_callback=None):
     measuregrps = body.get('measuregrps', [])
     
     if not measuregrps:
-        print(f"No measures found on Withings for the last {days} days.")
+        print(f"No measures found on Withings for the requested period.")
         return
 
-    # Filter to only keep groups that have weight data (type 1)
+    # Filter to only keep groups that have weight data (type 1) OR blood pressure (type 9, 10)
     valid_groups = []
     for group in measuregrps:
         has_weight = False
+        has_bp = False
         for m in group['measures']:
             if m['type'] == 1:
                 has_weight = True
-                break
-        if has_weight:
+            if m['type'] in [9, 10]:
+                has_bp = True
+        
+        if has_weight or has_bp:
             valid_groups.append(group)
             
     measuregrps = valid_groups
     total_groups = len(measuregrps)
-    print(f"Found {total_groups} measurement groups with weight data.")
+    print(f"Found {total_groups} valid measurement groups (Weight or BP).")
     
     # Reverse to process from Oldest to Newest
     measuregrps.reverse()
@@ -110,16 +128,16 @@ def sync_data(token_data, garmin_client, days=30, progress_callback=None):
     
     # Process ALL groups found
     for i, group in enumerate(measuregrps):
-        # Progress Update
         if progress_callback:
             progress_callback(i + 1, total_groups)
 
         dt = datetime.fromtimestamp(group['date'], timezone.utc)
         
+        
         # Convert to local time
         dt_local = dt.astimezone(local_tz)
         
-        print(f"\nProcessing measurement {i+1}/{total_groups} for {dt} (UTC) -> {dt_local} (Local)...")
+        print(f"Processing measurement {i+1}/{total_groups} for {dt} (UTC) -> {dt_local} (Local)...")
         
         weight = None
         fat_ratio = None
@@ -128,6 +146,11 @@ def sync_data(token_data, garmin_client, days=30, progress_callback=None):
         bone_mass = None
         visceral_fat = None
         
+        
+        diastolic = None
+        systolic = None
+        heart_rate = None
+
         for measure in group['measures']:
             val = get_measure_value(measure)
             type_code = measure['type']
@@ -138,7 +161,13 @@ def sync_data(token_data, garmin_client, days=30, progress_callback=None):
             elif type_code == 77: hydration = val
             elif type_code == 88: bone_mass = val
             elif type_code == 12: visceral_fat = val
+            elif type_code == 9: diastolic = int(val)
+            elif type_code == 10: systolic = int(val)
+            elif type_code == 11: heart_rate = int(val)
             
+        group_success = False
+        
+        # --- UPLOAD WEIGHT ---
         if weight:
             print(f"  Weight: {weight} kg")
             
@@ -165,21 +194,53 @@ def sync_data(token_data, garmin_client, days=30, progress_callback=None):
                     muscle_mass=muscle_mass,
                     bmi=bmi
                 )
-                print(f"  Successfully synced.")
-                success_count += 1
+                print(f"  Successfully synced Weight.")
+                group_success = True
             except Exception as e:
-                print(f"  Failed to upload. Error type: {type(e).__name__}")
-                fail_count += 1
-                
-            # Avoid hitting rate limits (Garmin doesn't like rapid fire requests sometimes)
-            time.sleep(1) # Be nice
-        else:
-            print("  Skipping group (No weight found).")
-            
-    print(f"\nBatch Sync Complete. Success: {success_count}, Failures: {fail_count}")
+                print(f"  Failed to upload Weight. Error type: {type(e).__name__}")
+        
+        # --- UPLOAD BLOOD PRESSURE ---
+        if systolic and diastolic:
+            print(f"  BP: {systolic}/{diastolic} mmHg, HR: {heart_rate}")
+            try:
+                garmin_client.set_blood_pressure(
+                    systolic=systolic,
+                    diastolic=diastolic,
+                    pulse=heart_rate,
+                    timestamp=dt_local.isoformat()
+                )
+                print(f"  Successfully synced Blood Pressure.")
+                group_success = True
+            except Exception as e:
+                print(f"  Failed to upload Blood Pressure. Error type: {type(e).__name__}")
 
-def run_historical_sync(days=30, progress_callback=None):
-    print(f"Withings to Garmin Sync Tool - {days} Day Batch")
+        if group_success:
+            success_count += 1
+        else:
+            if not weight and not (systolic and diastolic):
+                print("  Skipping group (No valid weight or BP data).")
+            else:
+                fail_count += 1
+
+        # Avoid hitting rate limits (Garmin doesn't like rapid fire requests sometimes)
+        time.sleep(1) # Be nice
+            
+    print(f"\nBatch Sync Complete. Success (Groups): {success_count}, Failures/Partial: {fail_count}")
+
+    # If dates provided, parse them
+    start_ts = None
+    end_ts = None
+    
+    # If called via kwargs (e.g. from server.py wrapper which might pass args differently)
+    # But usually run_historical_sync(days=X) or run_historical_sync(from_date=Y, to_date=Z)
+    # Let's adjust signature of run_historical_sync to be more flexible
+    pass
+
+def run_historical_sync(days=30, from_date=None, to_date=None, progress_callback=None):
+    if from_date:
+        print(f"Withings to Garmin Sync Tool - Date Range: {from_date} to {to_date or 'Now'}")
+    else:
+        print(f"Withings to Garmin Sync Tool - {days} Day Batch")
     
     if not config.WITHINGS_CLIENT_ID or not config.WITHINGS_CLIENT_SECRET:
         print("Error: Withings Credentials not found in .env")
@@ -210,14 +271,31 @@ def run_historical_sync(days=30, progress_callback=None):
         if os.path.exists(token_file):
             garmin.login(tokenstore=token_dir)
         else:
-             print("Token file not found, logging in via default store...")
-             garmin.login()
-             garmin.garth.dump(token_dir)
+            print("Token file not found, logging in via default store...")
+            garmin.login()
+            garmin.garth.dump(token_dir)
     except Exception as e:
         print(f"Garmin Auth Failed. Check credentials. Error type: {type(e).__name__}")
         return
 
-    sync_data(token_data, garmin, days=days, progress_callback=progress_callback)
+    # Parse Dates
+    start_ts = None
+    end_ts = None
+    
+    if from_date:
+        try:
+            # Assuming YYYY-MM-DD
+            dt_start = datetime.strptime(from_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            start_ts = int(dt_start.timestamp())
+            
+            if to_date:
+                dt_end = datetime.strptime(to_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+                end_ts = int(dt_end.timestamp())
+        except ValueError as e:
+            print(f"Error parsing dates: {e}")
+            return
+
+    sync_data(token_data, garmin, days=days, start_date=start_ts, end_date=end_ts, progress_callback=progress_callback)
 
 def main():
     import argparse
