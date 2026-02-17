@@ -212,8 +212,8 @@ def sync_data(token_data, garmin_client):
     headers = {'Authorization': f'Bearer {access_token}'}
     params = {
         'action': 'getmeas',
-        'meastype': '1,6,76,77,88,12', # Weight, Fat Ratio, Muscle Mass, Hydration, Bone Mass, Visceral Fat
-        'category': 1 
+        'meastype': '1,6,76,77,88,12,9,10,11', # Weight, Fat Ratio, Muscle Mass, Hydration, Bone Mass, Visceral Fat, Diastolic, Systolic, Heart Rate
+        # 'category': 1 
     }
     
     response = requests.get(url, headers=headers, params=params)
@@ -238,91 +238,157 @@ def sync_data(token_data, garmin_client):
     print(f"Found {len(measuregrps)} measurement groups.")
     
     # Search for the latest group that has a weight measurement
-    group = None
+    weight_group = None
+    bp_group = None
+
     for g in measuregrps:
         # Check if this group has a weight measure (type 1)
         # The API returns groups sorted by date descending (newest first) by default
         has_weight = False
+        has_bp = False
+
         for m in g['measures']:
             if m['type'] == 1:
                 has_weight = True
-                break
+            if m['type'] in [9, 10]: # Diastolic or Systolic
+                has_bp = True
         
-        if has_weight:
-            group = g
+        if has_weight and not weight_group:
+            weight_group = g
+        
+        if has_bp and not bp_group:
+            bp_group = g
+            
+        if weight_group and bp_group:
             break
             
-    if not group:
-         print("No measurement group with weight found.")
+    if not weight_group and not bp_group:
+         print("No measurement group with weight or blood pressure found.")
          return
     
-    dt = datetime.fromtimestamp(group['date'], timezone.utc)
-    
-    # Convert to local time
-    local_tz = tzlocal.get_localzone()
-    dt_local = dt.astimezone(local_tz)
-    
-    print(f"\nProcessing measurement for {dt} (UTC) -> {dt_local} (Local)...")
-    
-    weight = None
-    fat_ratio = None
-    muscle_mass = None
-    hydration = None
-    bone_mass = None
-    visceral_fat = None
-    
-    for measure in group['measures']:
-        val = get_measure_value(measure)
-        type_code = measure['type']
+    # --- PROCESS WEIGHT ---
+    if weight_group:
+        dt = datetime.fromtimestamp(weight_group['date'], timezone.utc)
         
-        if type_code == 1: # Weight (kg)
-            weight = val
-        elif type_code == 6: # Fat Ratio (%)
-            fat_ratio = val
-        elif type_code == 76: # Muscle Mass (kg)
-            muscle_mass = val
-        elif type_code == 77: # Hydration (kg) or mass?
-            hydration = val
-        elif type_code == 88: # Bone Mass (kg)
-            bone_mass = val
-        elif type_code == 12: # Visceral Fat
-            visceral_fat = val
-            
-    if weight:
-        print(f"  Weight: {weight} kg")
-        if fat_ratio: print(f"  Fat Ratio: {fat_ratio} %")
-        if muscle_mass: print(f"  Muscle Mass: {muscle_mass} kg")
-        if hydration: print(f"  Hydration: {hydration} kg")
+        # Convert to local time
+        local_tz = tzlocal.get_localzone()
+        dt_local = dt.astimezone(local_tz)
         
-        percent_hydration = None
-        if hydration and weight:
-            percent_hydration = (hydration / weight) * 100
+        print(f"\nProcessing Weight measurement for {dt} (UTC) -> {dt_local} (Local)...")
+        
+        weight = None
+        fat_ratio = None
+        muscle_mass = None
+        hydration = None
+        bone_mass = None
+        visceral_fat = None
+        
+        for measure in weight_group['measures']:
+            val = get_measure_value(measure)
+            type_code = measure['type']
             
-        bmi = None
-        if user_height:
-            bmi = weight / (user_height * user_height)
-            print(f"  Calculated BMI: {bmi:.2f}")
+            if type_code == 1: # Weight (kg)
+                weight = val
+            elif type_code == 6: # Fat Ratio (%)
+                fat_ratio = val
+            elif type_code == 76: # Muscle Mass (kg)
+                muscle_mass = val
+            elif type_code == 77: # Hydration (kg) or mass?
+                hydration = val
+            elif type_code == 88: # Bone Mass (kg)
+                bone_mass = val
+            elif type_code == 12: # Visceral Fat
+                visceral_fat = val
+                
+        if weight:
+            print(f"  Weight: {weight} kg")
+            if fat_ratio: print(f"  Fat Ratio: {fat_ratio} %")
+            if muscle_mass: print(f"  Muscle Mass: {muscle_mass} kg")
+            if hydration: print(f"  Hydration: {hydration} kg")
+            
+            percent_hydration = None
+            if hydration and weight:
+                percent_hydration = (hydration / weight) * 100
+                
+            bmi = None
+            if user_height:
+                bmi = weight / (user_height * user_height)
+                print(f"  Calculated BMI: {bmi:.2f}")
 
-        try:
-            timestamp_str = dt_local.isoformat()
-            
-            print(f"  Uploading to Garmin at {timestamp_str}...")
-            
-            garmin_client.add_body_composition(
-                timestamp=timestamp_str,
-                weight=weight,
-                percent_fat=fat_ratio,
-                percent_hydration=percent_hydration,
-                visceral_fat_rating=visceral_fat,
-                bone_mass=bone_mass,
-                muscle_mass=muscle_mass,
-                bmi=bmi
-            )
-            print(f"  Successfully synced to Garmin!")
-        except Exception as e:
-            print(f"  Failed to upload to Garmin. Error type: {type(e).__name__}")
+            try:
+                timestamp_str = dt_local.isoformat()
+                
+                print(f"  Uploading Weight to Garmin at {timestamp_str}...")
+                
+                garmin_client.add_body_composition(
+                    timestamp=timestamp_str,
+                    weight=weight,
+                    percent_fat=fat_ratio,
+                    percent_hydration=percent_hydration,
+                    visceral_fat_rating=visceral_fat,
+                    bone_mass=bone_mass,
+                    muscle_mass=muscle_mass,
+                    bmi=bmi
+                )
+                print(f"  Successfully synced Weight to Garmin!")
+            except Exception as e:
+                print(f"  Failed to upload Weight to Garmin. Error type: {type(e).__name__}")
+        else:
+            print("  Skipping weight group (No weight found in group).")
     else:
-        print("  Skipping group (No weight found).")
+        print("No weight measurement found.")
+
+    # --- PROCESS BLOOD PRESSURE ---
+    if bp_group:
+        dt_bp = datetime.fromtimestamp(bp_group['date'], timezone.utc)
+        
+        # Convert to local time
+        local_tz = tzlocal.get_localzone()
+        dt_local_bp = dt_bp.astimezone(local_tz)
+        
+        print(f"\nProcessing Blood Pressure measurement for {dt_bp} (UTC) -> {dt_local_bp} (Local)...")
+        
+        diastolic = None
+        systolic = None
+        heart_rate = None
+        
+        for measure in bp_group['measures']:
+            val = get_measure_value(measure)
+            type_code = measure['type']
+            
+            if type_code == 9: # Diastolic (mmHg)
+                diastolic = int(val)
+            elif type_code == 10: # Systolic (mmHg)
+                systolic = int(val)
+            elif type_code == 11: # Heart Rate (bpm)
+                heart_rate = int(val)
+
+        if diastolic and systolic:
+            print(f"  Systolic: {systolic} mmHg")
+            print(f"  Diastolic: {diastolic} mmHg")
+            if heart_rate: print(f"  Heart Rate: {heart_rate} bpm")
+            
+            try:
+                # Garmin usually expects a timestamp.
+                # set_blood_pressure(self, systolic: int, diastolic: int, pulse: int, timestamp: str = '', notes: str = '')
+                
+                print(f"  Uploading Blood Pressure to Garmin at {dt_local_bp.isoformat()}...")
+                
+                garmin_client.set_blood_pressure(
+                    systolic=systolic,
+                    diastolic=diastolic,
+                    pulse=heart_rate,
+                    timestamp=dt_local_bp.isoformat()
+                )
+
+                print(f"  Successfully synced Blood Pressure to Garmin!")
+            except Exception as e:
+                print(f"  Failed to upload Blood Pressure to Garmin. Error type: {type(e).__name__} {e}")
+
+        else:
+             print("  Skipping BP group (Incomplete data).")
+    else:
+        print("No blood pressure measurement found.")
 
 def main():
     print("Welcome to the Withings to Garmin Sync Tool!")

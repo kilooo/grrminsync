@@ -1,0 +1,21 @@
+Running Withings API Diagnostics...
+
+--- TEST 1: Fetching Jan 2025 (Target Range) ---
+Querying from 2025-01-01 00:00:00+00:00 (1735689600) to 2025-02-01 00:00:00+00:00 (1738368000)
+Found 43 measurement groups.
+Unique Measure Types Found: [1, 5, 6, 8, 11, 76, 77, 88, 170, 226, 227]
+FOUND BP DATA in 10 groups:
+  Date: 2025-01-30 05:55:04, Types: [11], Category: 1
+  Date: 2025-01-25 08:46:28, Types: [11], Category: 1
+  Date: 2025-01-24 06:06:27, Types: [11], Category: 1
+  Date: 2025-01-23 06:15:54, Types: [11], Category: 1
+  Date: 2025-01-22 07:20:43, Types: [11], Category: 1
+  Date: 2025-01-21 06:08:07, Types: [11], Category: 1
+  Date: 2025-01-20 07:54:06, Types: [11], Category: 1
+  Date: 2025-01-19 08:19:06, Types: [11], Category: 1
+  Date: 2025-01-14 06:10:23, Types: [11], Category: 1
+  Date: 2025-01-05 10:05:40, Types: [11], Category: 1
+
+--- TEST 2: Fetching last 60 days (Category 2 - User Objectives) ---
+Found 0 measurement groups in Category 2.
+No BP data in Category 2.
