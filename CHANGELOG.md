@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/kilooo/grrminsync/compare/v1.4.0...v1.5.0) (2026-02-17)
+
+
+### Features
+
+* Add Withings blood pressure synchronization, enhance historical sync with specific date ranges. ([3598487](https://github.com/kilooo/grrminsync/commit/35984875a2fa9c1a16397cc21f7a06d317c49b0b))
+
 # [1.4.0](https://github.com/kilooo/grrminsync/compare/v1.3.1...v1.4.0) (2026-02-11)
 
 
