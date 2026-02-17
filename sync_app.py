@@ -211,9 +211,7 @@ def sync_data(token_data, garmin_client):
     url = "https://wbsapi.withings.net/measure"
     headers = {'Authorization': f'Bearer {access_token}'}
     params = {
-        'action': 'getmeas',
-        'meastype': '1,6,76,77,88,12,9,10,11', # Weight, Fat Ratio, Muscle Mass, Hydration, Bone Mass, Visceral Fat, Diastolic, Systolic, Heart Rate
-        # 'category': 1 
+        'action': 'getmeas'
     }
     
     response = requests.get(url, headers=headers, params=params)

@@ -65,18 +65,15 @@ def sync_data(token_data, garmin_client, days=30, start_date=None, end_date=None
         
     else:
         # Legacy behavior: Last X days
-        print(f"\nFetching data from Withings for the last {days} days...")
+        print(f"Fetching data from Withings for the last {days} days...")
         now = datetime.now(timezone.utc)
         start_date_obj = now - timedelta(days=days)
         startdate = int(start_date_obj.timestamp())
     
     url = "https://wbsapi.withings.net/measure"
     headers = {'Authorization': f'Bearer {access_token}'}
-    # DEBUG: Request EVERYTHING to see where BP is hiding
     params = {
         'action': 'getmeas',
-        # 'meastype': '1,6,76,77,88,12,9,10,11',  # Commenting out to fetch ALL types
-        # 'category': 1, # Fetch both Real (1) and User Objectives (2)
         'startdate': startdate
     }
     
@@ -136,12 +133,11 @@ def sync_data(token_data, garmin_client, days=30, start_date=None, end_date=None
 
         dt = datetime.fromtimestamp(group['date'], timezone.utc)
         
+        
         # Convert to local time
         dt_local = dt.astimezone(local_tz)
         
-        # DEBUG: Inspect types in this group
-        types_in_group = [m['type'] for m in group['measures']]
-        print(f"\nProcessing measurement {i+1}/{total_groups} for {dt} (UTC) -> {dt_local} (Local)... [Types: {types_in_group}]")
+        print(f"Processing measurement {i+1}/{total_groups} for {dt} (UTC) -> {dt_local} (Local)...")
         
         weight = None
         fat_ratio = None
