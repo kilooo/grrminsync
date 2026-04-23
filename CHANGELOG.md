@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/kilooo/grrminsync/compare/v1.5.0...v1.6.0) (2026-04-23)
+
+
+### Features
+
+* implement base HTML layout with responsive sidebar and dynamic theme support ([da061ce](https://github.com/kilooo/grrminsync/commit/da061ce3d541805d3b8dc51e96f82ac2d6ebe03a))
+
 # [1.5.0](https://github.com/kilooo/grrminsync/compare/v1.4.0...v1.5.0) (2026-02-17)
 
 
