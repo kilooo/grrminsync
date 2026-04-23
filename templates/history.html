@@ -1,56 +1,65 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Sync History</h1>
-<p style="color: #64748b;">View logs of past synchronization attempts.</p>
+<div class="page-header">
+    <div>
+        <h1>Sync History</h1>
+        <p>View logs of past synchronization attempts.</p>
+    </div>
+</div>
 
-<table
-    style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-    <thead>
-        <tr style="background-color: #f1f5f9; text-align: left;">
-            <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Time</th>
-            <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Status</th>
-            <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for entry in history %}
-        <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 12px 15px;">{{ entry.timestamp }}</td>
-            <td
-                style="padding: 12px 15px; color: {{ 'green' if 'Success' in entry.status else 'red' }}; font-weight: bold;">
-                {{ entry.status }}
-            </td>
-            <td style="padding: 12px 15px;">
-                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;"
-                    onclick="toggleLog(this, {{ loop.index }})">Show Log</button>
-            </td>
-        </tr>
-        <tr id="log-row-{{ loop.index }}" style="display:none; background-color: #f8fafc;">
-            <td colspan="3" style="padding: 0;">
-                <div
-                    style="background: #1e293b; color: #cbd5e1; padding: 15px; margin: 0; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">
-                    {{ entry.log }}</div>
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="3" style="text-align:center; padding: 20px;">No history yet.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="card" style="max-width: 960px;">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Status</th>
+                <th style="text-align: right;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in history %}
+            <tr>
+                <td>{{ entry.timestamp }}</td>
+                <td>
+                    {% if 'Success' in entry.status %}
+                    <span class="badge badge-success"><span class="badge-dot"></span>{{ entry.status }}</span>
+                    {% else %}
+                    <span class="badge badge-danger"><span class="badge-dot"></span>{{ entry.status }}</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <button class="btn btn-secondary btn-sm" onclick="toggleLog(this, {{ loop.index }})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                        Show Log
+                    </button>
+                </td>
+            </tr>
+            <tr id="log-row-{{ loop.index }}" class="log-row" style="display:none;">
+                <td colspan="3" style="padding: 0 12px 12px;">
+                    <div class="log-block">{{ entry.log }}</div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" class="table-empty">No history yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 <script>
     function toggleLog(btn, index) {
-        var row = document.getElementById('log-row-' + index);
-        if (row.style.display === 'none') {
-            row.style.display = 'table-row';
-            btn.textContent = 'Hide Log';
-        } else {
-            row.style.display = 'none';
-            btn.textContent = 'Show Log';
-        }
+        const row = document.getElementById('log-row-' + index);
+        const isHidden = row.style.display === 'none';
+        row.style.display = isHidden ? 'table-row' : 'none';
+        btn.innerHTML = isHidden
+            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg> Hide Log`
+            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> Show Log`;
     }
 </script>
 {% endblock %}
