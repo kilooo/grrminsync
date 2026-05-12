@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/kilooo/grrminsync/compare/v1.6.0...v1.7.0) (2026-05-12)
+
+
+### Features
+
+* added option to clear credentials ([e4d2dd3](https://github.com/kilooo/grrminsync/commit/e4d2dd3ca5819d4a3e9cf8c9160fc751e4edcd3c))
+
 # [1.6.0](https://github.com/kilooo/grrminsync/compare/v1.5.0...v1.6.0) (2026-04-23)
 
 
