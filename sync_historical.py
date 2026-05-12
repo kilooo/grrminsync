@@ -260,20 +260,15 @@ def run_historical_sync(days=30, from_date=None, to_date=None, progress_callback
 
     try:
         print("Connecting to Garmin...")
-        garmin = Garmin(config.GARMIN_EMAIL, config.GARMIN_PASSWORD)
         import os
-        token_dir = os.path.join("data", '.garth') 
-        # Ensure it exists
-        if not os.path.exists(token_dir):
-            os.makedirs(token_dir, exist_ok=True)
-            
-        token_file = os.path.join(token_dir, 'oauth1_token.json')
-        if os.path.exists(token_file):
+        token_dir = os.path.join("data", '.garminconnect')
+        os.makedirs(token_dir, exist_ok=True)
+        garmin = Garmin(config.GARMIN_EMAIL, config.GARMIN_PASSWORD)
+        
+        try:
             garmin.login(tokenstore=token_dir)
-        else:
-            print("Token file not found, logging in via default store...")
-            garmin.login()
-            garmin.garth.dump(token_dir)
+        except Exception:
+            garmin.login(email=config.GARMIN_EMAIL, password=config.GARMIN_PASSWORD, tokenstore=token_dir)
     except Exception as e:
         print(f"Garmin Auth Failed. Check credentials. Error type: {type(e).__name__}")
         return
