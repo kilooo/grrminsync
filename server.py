@@ -672,6 +672,51 @@ def save_garmin_config():
     GARMIN_AUTH_SESSION = None
     return jsonify({"message": "Timeout connecting to Garmin (Backend)."}), 504
 
+@app.route('/config/clear', methods=['POST'])
+def clear_all_credentials():
+    try:
+        import shutil
+        # Clear credentials.json
+        creds_path = os.path.join(DATA_DIR, 'credentials.json')
+        if os.path.exists(creds_path):
+            os.remove(creds_path)
+            
+        # Clear withings tokens
+        withings_path = os.path.join(DATA_DIR, 'withings_tokens.pkl')
+        if os.path.exists(withings_path):
+            os.remove(withings_path)
+            
+        # Clear garmin tokens
+        garmin_dir = os.path.join(DATA_DIR, '.garminconnect')
+        if os.path.exists(garmin_dir):
+            shutil.rmtree(garmin_dir, ignore_errors=True)
+            
+        garth_dir = os.path.join(DATA_DIR, '.garth')
+        if os.path.exists(garth_dir):
+            shutil.rmtree(garth_dir, ignore_errors=True)
+            
+        # Reset runtime globals
+        import config
+        config.WITHINGS_CLIENT_ID = ""
+        config.WITHINGS_CLIENT_SECRET = ""
+        config.WITHINGS_REDIRECT_URI = "http://localhost:5000/auth/withings/callback"
+        config.GARMIN_EMAIL = ""
+        config.GARMIN_PASSWORD = ""
+        
+        global WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI, GARMIN_EMAIL, GARMIN_PASSWORD
+        WITHINGS_CLIENT_ID = ""
+        WITHINGS_CLIENT_SECRET = ""
+        WITHINGS_REDIRECT_URI = "http://localhost:5000/auth/withings/callback"
+        GARMIN_EMAIL = ""
+        GARMIN_PASSWORD = ""
+        
+        sync_app.GARMIN_EMAIL = ""
+        sync_app.GARMIN_PASSWORD = ""
+        
+        return jsonify({"message": "All credentials and saved tokens have been cleared successfully."})
+    except Exception as e:
+        return jsonify({"message": f"Error clearing credentials: {str(e)}"}), 500
+
 if __name__ == '__main__':
     print("Starting server on 0.0.0.0:5000", flush=True)
     app.run(host='0.0.0.0', port=5000)
