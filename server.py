@@ -567,34 +567,21 @@ def garmin_login_thread(email, password):
 
     try:
         # We use a custom tokenstore location to ensure persistence across reboots/container recreations if mapped
-        token_dir = os.path.join(DATA_DIR, '.garth')
-        # garth (underlying lib) expects the home directory usage or we can try to pass a specific dir?
-        # Garmin.login() takes 'tokenstore' which is expected to be a directory path usually, or defaults to ~/.garth
-        # We will use ~/.garth behavior but redirected if possible? 
-        # Actually garth allows expanding `~`. 
-        # But simply: init Garmin, then login.
+        token_dir = os.path.join(DATA_DIR, '.garminconnect')
         
-        # NOTE: garminconnect < 0.2.x behaved differently. We have 0.2.38.
-        # We should try to force the token store to our data dir.
-        
-        # Ensure directory exists, otherwise garth/GarminConnect might fail to read/write
+        # Ensure directory exists, otherwise GarminConnect might fail to read/write
         if not os.path.exists(token_dir):
             try:
-                os.makedirs(token_dir)
+                os.makedirs(token_dir, exist_ok=True)
             except Exception as e:
                 print(f"Error creating token dir: {e}") 
 
         g = Garmin(email, password, prompt_mfa=prompt_mfa)
         
-        # If token dir is empty or missing specific file, don't pass it to login() or it crashes.
-        # Instead, log in with default (temp) store, then DUMP to our target dir.
-        token_file = os.path.join(token_dir, 'oauth1_token.json')
-        if os.path.exists(token_file):
+        try:
             g.login(tokenstore=token_dir)
-        else:
-            g.login() # Uses default ~/.garth
-            # Now save to our custom dir
-            g.garth.dump(token_dir)
+        except Exception:
+            g.login(email=email, password=password, tokenstore=token_dir)
         
         GARMIN_AUTH_SESSION['result'] = {'success': True}
     except Exception as e:
