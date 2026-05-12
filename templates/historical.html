@@ -1,63 +1,115 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Historical Data Sync</h1>
-<p style="color: #64748b;">Import past data from Withings to Garmin.</p>
+<div class="page-header">
+    <div>
+        <h1>Historical Data Sync</h1>
+        <p>Import past data from Withings to Garmin.</p>
+    </div>
+</div>
 
 <div class="card">
-    <h2>Select Time Range</h2>
-    <p style="color:#64748b; margin-bottom: 20px;">
-        Define how many days back you want to sync. <br>
-        <strong>Warning:</strong> Syncing a long period may take some time.
-    </p>
-
-    <div style="margin-bottom: 20px;">
-        <div style="margin-bottom: 10px;">
-            <input type="radio" id="mode-days" name="sync-mode" value="days" checked onchange="toggleMode()">
-            <label for="mode-days">Last X Days</label>
-            <input type="radio" id="mode-dates" name="sync-mode" value="dates" onchange="toggleMode()" style="margin-left: 20px;">
-            <label for="mode-dates">Date Range</label>
-        </div>
-
-        <div id="input-days" style="margin-top: 10px;">
-            <label>Sync last </label>
-            <input type="number" id="days" value="30" min="1" max="3650" style="width: 100px; display: inline-block;">
-            <label> days</label>
-        </div>
-
-        <div id="input-dates" style="margin-top: 10px; display: none;">
-            <label>From: </label>
-            <input type="date" id="from-date" style="margin-right: 15px;">
-            <label>To: </label>
-            <input type="date" id="to-date">
+    <div class="card-header">
+        <div class="card-title">
+            <div class="card-title-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+            </div>
+            <div>
+                <h2>Select Time Range</h2>
+                <p class="card-desc" style="margin: 2px 0 0;">Syncing long periods may take a while.</p>
+            </div>
         </div>
     </div>
 
-    <button id="sync-btn" class="btn" onclick="triggerHistoricalSync()">Start Import</button>
-
-    <div id="progress-container" style="margin-top: 20px; display: none;">
-        <div style="background: #e2e8f0; border-radius: 999px; height: 10px; overflow: hidden;">
-            <div id="progress-bar" style="background: #2563eb; width: 0%; height: 100%; transition: width 0.3s;"></div>
+    <div class="mt-4">
+        <div class="radio-chips" role="radiogroup">
+            <label class="radio-chip active" id="chip-days">
+                <input type="radio" name="sync-mode" value="days" checked onchange="toggleMode()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" style="width:14px;height:14px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Last X Days
+            </label>
+            <label class="radio-chip" id="chip-dates">
+                <input type="radio" name="sync-mode" value="dates" onchange="toggleMode()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" style="width:14px;height:14px;">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                </svg>
+                Date Range
+            </label>
         </div>
-        <div id="progress-text" style="margin-top: 10px; font-weight: 600; color: #475569;">Starting...</div>
+
+        <div id="input-days" class="mt-4">
+            <div class="input-group">
+                <label>Sync the last</label>
+                <div class="row">
+                    <input type="number" id="days" value="30" min="1" max="3650" style="width: 120px;">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">days</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="input-dates" class="mt-4" style="display: none;">
+            <div class="form-grid-2">
+                <div class="input-group">
+                    <label>From</label>
+                    <input type="date" id="from-date">
+                </div>
+                <div class="input-group">
+                    <label>To (optional)</label>
+                    <input type="date" id="to-date">
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="status"
-        style="margin-top: 20px; white-space: pre-wrap; text-align: left; background: #1e293b; color: #cbd5e1; padding: 15px; border-radius: 8px; display: none; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto;">
+    <div class="mt-4">
+        <button id="sync-btn" class="btn" onclick="triggerHistoricalSync()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <polyline points="8 17 12 21 16 17"></polyline>
+                <line x1="12" y1="12" x2="12" y2="21"></line>
+                <path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"></path>
+            </svg>
+            Start Import
+        </button>
     </div>
+
+    <div id="progress-container" class="mt-5 fade-in" style="display: none;">
+        <div class="progress">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div id="progress-text"
+            style="margin-top: 10px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Starting...</div>
+    </div>
+
+    <div id="status" class="log-block mt-4" style="display: none;"></div>
 </div>
 
 <script>
     let pollInterval;
 
     function toggleMode() {
-        const isDays = document.getElementById('mode-days').checked;
+        const isDays = document.getElementById('chip-days').querySelector('input').checked;
         document.getElementById('input-days').style.display = isDays ? 'block' : 'none';
         document.getElementById('input-dates').style.display = isDays ? 'none' : 'block';
+        document.getElementById('chip-days').classList.toggle('active', isDays);
+        document.getElementById('chip-dates').classList.toggle('active', !isDays);
     }
 
     function triggerHistoricalSync() {
-        const isDays = document.getElementById('mode-days').checked;
+        const isDays = document.getElementById('chip-days').querySelector('input').checked;
         let payload = {};
 
         if (isDays) {
@@ -67,22 +119,16 @@
         } else {
             const fromDate = document.getElementById('from-date').value;
             const toDate = document.getElementById('to-date').value;
-            
             if (!fromDate) { alert('Please select a start date'); return; }
-            
-            payload = { 
-                from_date: fromDate,
-                to_date: toDate // Optional, server handles None
-            };
+            payload = { from_date: fromDate, to_date: toDate };
         }
 
-        // UI Reset
         document.getElementById('sync-btn').disabled = true;
         document.getElementById('progress-container').style.display = 'block';
         document.getElementById('progress-bar').style.width = '0%';
-        document.getElementById('progress-text').innerText = 'Starting sync...';
+        document.getElementById('progress-text').textContent = 'Starting sync...';
         document.getElementById('status').style.display = 'block';
-        document.getElementById('status').innerText = 'Initializing...';
+        document.getElementById('status').textContent = 'Initializing...';
 
         fetch('/historical/sync', {
             method: 'POST',
@@ -92,7 +138,6 @@
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'started') {
-                    // Start polling (GLOBAL progress, no job ID needed)
                     pollProgress();
                 } else {
                     alert('Error: ' + data.message);
@@ -106,37 +151,39 @@
     }
 
     function pollProgress() {
-        // Clear any existing interval to prevent duplicates
         if (pollInterval) clearInterval(pollInterval);
 
         pollInterval = setInterval(() => {
             fetch('/progress')
                 .then(r => r.json())
                 .then(data => {
-                    // data = { status: "running/completed/failed", current: X, total: Y, log: "...", message: "..." }
-
-                    // Update Progress Bar and Text
                     if (data.status === 'running' || data.status === 'idle') {
                         if (data.total > 0) {
                             const pct = Math.round((data.current / data.total) * 100);
                             document.getElementById('progress-bar').style.width = pct + '%';
-                            document.getElementById('progress-text').innerText = `Syncing: ${data.current} / ${data.total} measurements (${pct}%)`;
+                            document.getElementById('progress-text').textContent =
+                                `Syncing: ${data.current} / ${data.total} measurements (${pct}%)`;
                         } else {
-                            document.getElementById('progress-text').innerText = data.message || 'Initializing...';
+                            document.getElementById('progress-text').textContent = data.message || 'Initializing...';
                         }
                     }
 
-                    // Update Logs
                     if (data.log) {
-                        document.getElementById('status').innerText = data.log;
                         const statusDiv = document.getElementById('status');
+                        statusDiv.textContent = data.log;
                         statusDiv.scrollTop = statusDiv.scrollHeight;
                     }
 
-                    if (data.status === 'Success' || data.status === 'Failed' || data.status === 'completed' || data.status === 'failed') {
+                    if (data.status === 'Success' || data.status === 'Failed' ||
+                        data.status === 'completed' || data.status === 'failed') {
                         clearInterval(pollInterval);
                         document.getElementById('sync-btn').disabled = false;
-                        document.getElementById('progress-text').innerText = (data.status === 'Success' || data.status === 'completed') ? '✅ Sync Completed!' : '❌ Sync Failed';
+                        const success = data.status === 'Success' || data.status === 'completed';
+                        document.getElementById('progress-bar').style.width = '100%';
+                        document.getElementById('progress-text').textContent = success
+                            ? '✓ Sync Completed'
+                            : '✗ Sync Failed';
+                        document.getElementById('progress-text').style.color = success ? 'var(--success)' : 'var(--danger)';
                     }
                 });
         }, 1000);

@@ -1,88 +1,152 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Dashboard</h1>
-<p style="color: #64748b;">Manage your daily sync operations.</p>
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p>Manage your daily sync operations.</p>
+    </div>
+</div>
 
 <!-- Recent History Card -->
 <div class="card">
-    <h2>Recent Sync History</h2>
-    <table
-        style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+    <div class="card-header">
+        <div class="card-title">
+            <div class="card-title-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3 3v5h5"></path>
+                    <path d="M3.05 13A9 9 0 106 5.3L3 8"></path>
+                    <path d="M12 7v5l4 2"></path>
+                </svg>
+            </div>
+            <div>
+                <h2>Recent Sync History</h2>
+                <p class="card-desc" style="margin: 2px 0 0;">Your last 3 sync attempts.</p>
+            </div>
+        </div>
+        <a href="/history" class="link">View All
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </a>
+    </div>
+
+    <table class="data-table mt-4">
         <thead>
-            <tr style="background-color: #f1f5f9; text-align: left;">
-                <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Time</th>
-                <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Status</th>
-                <th style="padding: 12px 15px; border-bottom: 1px solid #ddd;">Action</th>
+            <tr>
+                <th>Time</th>
+                <th>Status</th>
+                <th style="text-align: right;">Action</th>
             </tr>
         </thead>
         <tbody>
             {% for entry in history %}
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 12px 15px;">{{ entry.timestamp }}</td>
-                <td
-                    style="padding: 12px 15px; color: {{ 'green' if 'Success' in entry.status else 'red' }}; font-weight: bold;">
-                    {{ entry.status }}
+            <tr>
+                <td>{{ entry.timestamp }}</td>
+                <td>
+                    {% if 'Success' in entry.status %}
+                    <span class="badge badge-success"><span class="badge-dot"></span>{{ entry.status }}</span>
+                    {% else %}
+                    <span class="badge badge-danger"><span class="badge-dot"></span>{{ entry.status }}</span>
+                    {% endif %}
                 </td>
-                <td style="padding: 12px 15px;">
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;"
-                        onclick="toggleLog(this, {{ loop.index }})">Show Log</button>
+                <td style="text-align: right;">
+                    <button class="btn btn-secondary btn-sm" onclick="toggleLog(this, {{ loop.index }})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                        Show Log
+                    </button>
                 </td>
             </tr>
-            <tr id="log-row-{{ loop.index }}" style="display:none; background-color: #f8fafc;">
-                <td colspan="3" style="padding: 0;">
-                    <div
-                        style="background: #1e293b; color: #cbd5e1; padding: 15px; margin: 0; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">
-                        {{ entry.log }}</div>
+            <tr id="log-row-{{ loop.index }}" class="log-row" style="display:none;">
+                <td colspan="3" style="padding: 0 12px 12px;">
+                    <div class="log-block">{{ entry.log }}</div>
                 </td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="3" style="text-align:center; padding: 20px;">No history yet.</td>
+                <td colspan="3" class="table-empty">No history yet.</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    <div style="margin-top: 15px; text-align: right;">
-        <a href="/history" style="text-decoration: none; color: #2563eb; font-weight: 500;">View Full History →</a>
-    </div>
 </div>
 
 <!-- Manual Sync Card -->
 <div class="card">
-    <h2>Manual Sync</h2>
-    <p>Trigger an immediate synchronization of today's weight data.</p>
-    <button class="btn" onclick="triggerSync()">Sync Now</button>
-    <div id="status"
-        style="margin-top: 15px; white-space: pre-wrap; text-align: left; background: #f1f5f9; padding: 15px; border-radius: 8px; display: none; font-family: monospace; font-size: 14px; overflow-x: auto; color: #333;">
+    <div class="card-header">
+        <div class="card-title">
+            <div class="card-title-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"></path>
+                </svg>
+            </div>
+            <div>
+                <h2>Manual Sync</h2>
+                <p class="card-desc" style="margin: 2px 0 0;">Trigger an immediate sync of today's weight data.</p>
+            </div>
+        </div>
     </div>
+
+    <div class="mt-4">
+        <button class="btn" onclick="triggerSync()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Sync Now
+        </button>
+    </div>
+    <div id="status" class="log-block mt-4 fade-in" style="display:none;"></div>
 </div>
 
 <!-- Auto-Sync Schedules Card -->
 <div class="card">
-    <h2>Auto-Sync Schedules</h2>
-    <div id="schedule-status" style="margin-bottom: 20px; font-weight: 600; color: #475569;">Loading schedules...</div>
+    <div class="card-header">
+        <div class="card-title">
+            <div class="card-title-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </div>
+            <div>
+                <h2>Auto-Sync Schedules</h2>
+                <p class="card-desc" id="schedule-status" style="margin: 2px 0 0;">Loading schedules...</p>
+            </div>
+        </div>
+    </div>
 
-    <!-- List of Schedules -->
-    <table id="schedule-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px; display: none;">
+    <table id="schedule-table" class="data-table mt-4" style="display: none;">
         <thead>
-            <tr style="background-color: #f1f5f9; text-align: left;">
-                <th style="padding: 8px 10px; border-bottom: 1px solid #ddd;">Time (Local)</th>
-                <th style="padding: 8px 10px; border-bottom: 1px solid #ddd;">Action</th>
+            <tr>
+                <th>Time (Local)</th>
+                <th style="text-align: right;">Action</th>
             </tr>
         </thead>
-        <tbody id="schedule-list">
-            <!-- Populated via JS -->
-        </tbody>
+        <tbody id="schedule-list"></tbody>
     </table>
 
-    <div style="border-top: 1px solid #eee; padding-top: 15px;">
+    <div class="card-section">
         <h3>Add New Schedule</h3>
-        <div class="input-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-            <label>Time:</label>
-            <input type="time" id="sched-time" style="width: auto;">
+        <div class="row">
+            <input type="time" id="sched-time" style="width: auto; min-width: 150px;">
+            <button class="btn" onclick="addSchedule()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Schedule
+            </button>
         </div>
-        <button class="btn" onclick="addSchedule()">Add Schedule</button>
     </div>
 </div>
 
@@ -91,29 +155,23 @@
 {% block scripts %}
 <script>
     function toggleLog(btn, index) {
-        var row = document.getElementById('log-row-' + index);
-        if (row.style.display === 'none') {
-            row.style.display = 'table-row';
-            btn.textContent = 'Hide Log';
-        } else {
-            row.style.display = 'none';
-            btn.textContent = 'Show Log';
-        }
+        const row = document.getElementById('log-row-' + index);
+        const isHidden = row.style.display === 'none';
+        row.style.display = isHidden ? 'table-row' : 'none';
+        btn.innerHTML = isHidden
+            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg> Hide Log`
+            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> Show Log`;
     }
 
     function triggerSync() {
         const statusDiv = document.getElementById('status');
         statusDiv.style.display = 'block';
-        statusDiv.innerText = 'Starting sync... please wait...';
+        statusDiv.textContent = 'Starting sync... please wait...';
 
         fetch('/sync', { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                statusDiv.innerText = data.output;
-            })
-            .catch(error => {
-                statusDiv.innerText = 'Error: ' + error;
-            });
+            .then(r => r.json())
+            .then(data => { statusDiv.textContent = data.output; })
+            .catch(err => { statusDiv.textContent = 'Error: ' + err; });
     }
 
     function updateScheduleDisplay() {
@@ -127,33 +185,29 @@
                 const timezone = data.timezone || 'Unknown';
                 const schedules = data.schedules || [];
 
-                listEl.innerHTML = ''; // Clear list
+                listEl.innerHTML = '';
 
                 if (schedules.length === 0) {
-                    statusEl.innerText = `No active schedules (Server Timezone: ${timezone})`;
-                    statusEl.style.color = '#64748b';
+                    statusEl.textContent = `No active schedules — Server timezone: ${timezone}`;
                     tableEl.style.display = 'none';
                 } else {
-                    statusEl.innerText = `Active Schedules (Server Timezone: ${timezone})`;
-                    statusEl.style.color = 'green';
+                    statusEl.textContent = `${schedules.length} active schedule${schedules.length > 1 ? 's' : ''} — Server timezone: ${timezone}`;
                     tableEl.style.display = 'table';
 
                     schedules.forEach(sched => {
-                        const h = sched.hour;
-                        const m = sched.minute;
-
-                        // Format time
                         const date = new Date();
-                        date.setHours(h);
-                        date.setMinutes(m);
+                        date.setHours(sched.hour);
+                        date.setMinutes(sched.minute);
                         const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                         const row = document.createElement('tr');
-                        row.style.borderBottom = '1px solid #eee';
                         row.innerHTML = `
-                            <td style="padding: 8px 10px;">${timeStr}</td>
-                            <td style="padding: 8px 10px;">
-                                <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteSchedule(${sched.id})">Remove</button>
+                            <td><span class="badge badge-accent">${timeStr}</span></td>
+                            <td style="text-align: right;">
+                                <button class="btn btn-ghost btn-sm" onclick="deleteSchedule(${sched.id})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"></path></svg>
+                                    Remove
+                                </button>
                             </td>
                         `;
                         listEl.appendChild(row);
@@ -164,20 +218,17 @@
 
     function addSchedule() {
         const timeInput = document.getElementById('sched-time').value;
-
         if (!timeInput) { alert('Invalid time'); return; }
-
         const [h, m] = timeInput.split(':').map(Number);
 
-        // Send as-is (Local Server Time)
         fetch('/schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ hour: h, minute: m })
         })
             .then(r => r.json())
-            .then(data => {
-                // alert(data.message); // Optional
+            .then(() => {
+                document.getElementById('sched-time').value = '';
                 updateScheduleDisplay();
             });
     }
@@ -189,12 +240,9 @@
             body: JSON.stringify({ id: id })
         })
             .then(r => r.json())
-            .then(data => {
-                updateScheduleDisplay();
-            });
+            .then(() => updateScheduleDisplay());
     }
 
-    // Load initial state
     updateScheduleDisplay();
 </script>
 {% endblock %}

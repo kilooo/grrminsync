@@ -1,36 +1,164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grrmin Sync</title>
-    <!-- Google Fonts for Premium Feel -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        // Apply theme before paint to avoid flash
+        (function () {
+            try {
+                var t = localStorage.getItem('theme');
+                if (!t) {
+                    t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-theme', t);
+            } catch (e) { }
+        })();
+    </script>
     <style>
         :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --sidebar-bg: #0f172a;
-            --sidebar-text: #e2e8f0;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-color: #334155;
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --accent-soft: rgba(79, 70, 229, 0.1);
+            --accent-ring: rgba(79, 70, 229, 0.22);
+
+            --success: #10b981;
+            --success-soft: rgba(16, 185, 129, 0.12);
+            --warning: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.12);
+            --danger: #ef4444;
+            --danger-soft: rgba(239, 68, 68, 0.12);
+            --info: #0ea5e9;
+            --info-soft: rgba(14, 165, 233, 0.12);
+        }
+
+        :root[data-theme="light"] {
+            --bg: #f6f7fb;
+            --bg-gradient: radial-gradient(1200px 600px at 100% -10%, rgba(79, 70, 229, 0.08), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(14, 165, 233, 0.06), transparent 60%);
+            --surface: #ffffff;
+            --surface-muted: #f1f5f9;
+            --surface-hover: #f8fafc;
+            --border: #e5e7eb;
+            --border-strong: #cbd5e1;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --text-subtle: #94a3b8;
+
+            --sidebar-bg: #0b1220;
+            --sidebar-text: #cbd5e1;
+            --sidebar-active: rgba(255, 255, 255, 0.08);
+            --sidebar-hover: rgba(255, 255, 255, 0.05);
+            --sidebar-border: rgba(255, 255, 255, 0.08);
+
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+            --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.04);
+
+            --code-bg: #0b1220;
+            --code-text: #e2e8f0;
+        }
+
+        :root[data-theme="dark"] {
+            --bg: #0a0e1a;
+            --bg-gradient: radial-gradient(1200px 600px at 100% -10%, rgba(79, 70, 229, 0.18), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(14, 165, 233, 0.1), transparent 60%);
+            --surface: #111827;
+            --surface-muted: #1f2937;
+            --surface-hover: #1a2233;
+            --border: #1f2937;
+            --border-strong: #334155;
+            --text: #e5e7eb;
+            --text-muted: #94a3b8;
+            --text-subtle: #64748b;
+
+            --sidebar-bg: #050812;
+            --sidebar-text: #cbd5e1;
+            --sidebar-active: rgba(255, 255, 255, 0.06);
+            --sidebar-hover: rgba(255, 255, 255, 0.03);
+            --sidebar-border: rgba(255, 255, 255, 0.05);
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+
+            --code-bg: #030712;
+            --code-text: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            background-image: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.55;
             display: flex;
             min-height: 100vh;
-            color: var(--text-color);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
 
-        /* Sidebar Styles */
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin: 0 0 6px 0;
+            color: var(--text);
+        }
+
+        h2 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            margin: 0 0 4px 0;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+            color: var(--text);
+        }
+
+        p {
+            margin: 0 0 16px 0;
+            color: var(--text-muted);
+        }
+
+        .page-header {
+            margin-bottom: 28px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .page-header p {
+            margin: 0;
+        }
+
+        /* Sidebar */
         .sidebar {
-            width: 260px;
-            background-color: var(--sidebar-bg);
+            width: 248px;
+            background: var(--sidebar-bg);
             color: var(--sidebar-text);
             display: flex;
             flex-direction: column;
@@ -38,74 +166,193 @@
             height: 100vh;
             transition: transform 0.3s ease;
             z-index: 1000;
+            border-right: 1px solid var(--sidebar-border);
         }
 
         .sidebar-header {
-            padding: 24px;
-            font-size: 1.5rem;
+            padding: 22px 22px 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--sidebar-border);
+        }
+
+        .sidebar-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        }
+
+        .sidebar-title {
+            font-size: 1.05rem;
             font-weight: 700;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            letter-spacing: -0.01em;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.72rem;
+            color: #64748b;
+            font-weight: 500;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            margin-top: 2px;
         }
 
         .nav-links {
             list-style: none;
-            padding: 0;
-            margin-top: 20px;
+            padding: 12px 10px;
+            margin: 0;
+            flex: 1;
+            overflow-y: auto;
         }
 
-        .nav-links li a {
-            display: block;
-            padding: 16px 24px;
+        .nav-links li {
+            margin-bottom: 2px;
+        }
+
+        .nav-links a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
             color: var(--sidebar-text);
             text-decoration: none;
-            transition: background 0.2s;
+            border-radius: 8px;
             font-weight: 500;
+            font-size: 0.9rem;
+            transition: background 0.15s ease, color 0.15s ease;
+            position: relative;
         }
 
-        .nav-links li a:hover,
-        .nav-links li a.active {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-left: 4px solid var(--primary-color);
+        .nav-links a:hover {
+            background: var(--sidebar-hover);
+            color: #fff;
         }
 
-        /* Main Content */
+        .nav-links a.active {
+            background: var(--sidebar-active);
+            color: #fff;
+        }
+
+        .nav-links a.active::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 8px;
+            bottom: 8px;
+            width: 3px;
+            border-radius: 2px;
+            background: linear-gradient(180deg, #6366f1, #8b5cf6);
+        }
+
+        .nav-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            opacity: 0.8;
+        }
+
+        .sidebar-footer {
+            padding: 12px;
+            border-top: 1px solid var(--sidebar-border);
+        }
+
+        .theme-toggle {
+            width: 100%;
+            background: transparent;
+            color: var(--sidebar-text);
+            border: 1px solid var(--sidebar-border);
+            padding: 9px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: background 0.15s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--sidebar-hover);
+            color: #fff;
+        }
+
+        .theme-toggle .icon-sun,
+        .theme-toggle .icon-moon {
+            width: 16px;
+            height: 16px;
+        }
+
+        :root[data-theme="light"] .theme-toggle .icon-sun {
+            display: block;
+        }
+
+        :root[data-theme="light"] .theme-toggle .icon-moon {
+            display: none;
+        }
+
+        :root[data-theme="dark"] .theme-toggle .icon-sun {
+            display: none;
+        }
+
+        :root[data-theme="dark"] .theme-toggle .icon-moon {
+            display: block;
+        }
+
+        /* Main */
         .main-content {
             flex: 1;
-            margin-left: 260px;
-            padding: 40px;
+            margin-left: 248px;
+            padding: 40px 44px 60px;
+            max-width: 1100px;
             transition: margin-left 0.3s ease;
         }
 
-        /* Mobile Hamburger */
+        /* Hamburger */
         .hamburger {
             display: none;
             position: fixed;
-            top: 20px;
-            left: 20px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 6px;
+            top: 16px;
+            left: 16px;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 8px;
             z-index: 2000;
             cursor: pointer;
+            box-shadow: var(--shadow-sm);
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
+        .hamburger svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+
+        @media (max-width: 900px) {
             .sidebar {
                 transform: translateX(-100%);
             }
 
             .sidebar.active {
                 transform: translateX(0);
+                box-shadow: var(--shadow-lg);
             }
 
             .main-content {
                 margin-left: 0;
-                padding: 20px;
-                padding-top: 70px;
-                /* Space for hamburger */
+                padding: 68px 20px 40px;
             }
 
             .hamburger {
@@ -117,131 +364,674 @@
             }
         }
 
-        /* Card Styles */
+        /* Card */
         .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-md);
             padding: 24px;
-            margin-bottom: 24px;
-            max-width: 800px;
-        }
-
-        .card h2 {
-            margin-top: 0;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 12px;
             margin-bottom: 20px;
-            font-size: 1.25rem;
-            color: #1e293b;
+            max-width: 820px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
         }
 
-        /* Elements */
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 4px;
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .card-title-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .card-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin: 0 0 20px;
+        }
+
+        .card-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Buttons */
         .btn {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            border: none;
+            background: var(--accent);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 9px;
+            border: 1px solid transparent;
             font-weight: 600;
+            font-size: 0.9rem;
+            font-family: inherit;
             cursor: pointer;
-            transition: transform 0.1s, background-color 0.2s;
-            display: inline-block;
-            text-align: center;
+            transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            line-height: 1;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
         }
 
         .btn:hover {
-            background-color: var(--primary-hover);
+            background: var(--accent-hover);
         }
 
         .btn:active {
             transform: scale(0.98);
         }
 
+        .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .btn-secondary {
-            background-color: #64748b;
+            background: var(--surface-muted);
+            color: var(--text);
+            border-color: var(--border);
         }
 
         .btn-secondary:hover {
-            background-color: #475569;
+            background: var(--surface-hover);
+            border-color: var(--border-strong);
         }
 
         .btn-danger {
-            background-color: #ef4444;
+            background: var(--danger);
         }
 
         .btn-danger:hover {
-            background-color: #dc2626;
+            background: #dc2626;
         }
 
+        .btn-info {
+            background: var(--info);
+        }
+
+        .btn-info:hover {
+            background: #0284c7;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            border-color: var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: var(--surface-muted);
+            color: var(--text);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.82rem;
+            border-radius: 7px;
+        }
+
+        .btn-sm svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .btn-lg {
+            padding: 14px 20px;
+            font-size: 1rem;
+            border-radius: 10px;
+            width: 100%;
+        }
+
+        .btn-icon {
+            padding: 7px;
+        }
+
+        /* Form */
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--text);
         }
 
         input[type=text],
         input[type=password],
         input[type=email],
-        input[type=number] {
+        input[type=number],
+        input[type=time],
+        input[type=date],
+        input[type=datetime-local] {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1rem;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            border-radius: 9px;
+            font-size: 0.92rem;
+            font-family: inherit;
             box-sizing: border-box;
-            transition: border-color 0.2s;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+
+        input::placeholder {
+            color: var(--text-subtle);
         }
 
         input:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+
+        input:disabled {
+            background: var(--surface-muted);
+            cursor: not-allowed;
+        }
+
+        /* Inputs: dark mode picker indicators */
+        :root[data-theme="dark"] input[type=date]::-webkit-calendar-picker-indicator,
+        :root[data-theme="dark"] input[type=time]::-webkit-calendar-picker-indicator,
+        :root[data-theme="dark"] input[type=datetime-local]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(0.8);
+        }
+
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        @media (max-width: 540px) {
+            .form-grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .badge-success {
+            background: var(--success-soft);
+            color: var(--success);
+        }
+
+        .badge-danger {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .badge-warning {
+            background: var(--warning-soft);
+            color: var(--warning);
+        }
+
+        .badge-info {
+            background: var(--info-soft);
+            color: var(--info);
+        }
+
+        .badge-accent {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .badge-neutral {
+            background: var(--surface-muted);
+            color: var(--text-muted);
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Table */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: var(--surface);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .data-table thead tr {
+            background: var(--surface-muted);
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 11px 14px;
+            font-weight: 600;
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--surface-hover);
+        }
+
+        .data-table tr.log-row:hover {
+            background: transparent;
+        }
+
+        .table-empty {
+            text-align: center;
+            padding: 28px !important;
+            color: var(--text-muted);
+        }
+
+        /* Log/code block */
+        .log-block {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 12.5px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            max-height: 380px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+
+        /* Link */
+        .link {
+            color: var(--accent);
+            font-weight: 500;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.15s ease;
+        }
+
+        .link:hover {
+            color: var(--accent-hover);
+        }
+
+        .link svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Progress */
+        .progress {
+            background: var(--surface-muted);
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--accent), #8b5cf6);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 999px;
+        }
+
+        /* Flex helpers */
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .row-between {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .mt-4 {
+            margin-top: 16px;
+        }
+
+        .mt-5 {
+            margin-top: 20px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+            display: inline-flex;
+        }
+
+        /* Status boxes */
+        .status-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .status-box svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .status-box.is-pending {
+            background: var(--info-soft);
+            color: var(--info);
+            border-color: transparent;
+        }
+
+        .status-box.is-success {
+            background: var(--success-soft);
+            color: var(--success);
+            border-color: transparent;
+        }
+
+        .status-box.is-error {
+            background: var(--danger-soft);
+            color: var(--danger);
+            border-color: transparent;
+        }
+
+        .status-box.is-warning {
+            background: var(--warning-soft);
+            color: var(--warning);
+            border-color: transparent;
+        }
+
+        /* Segmented control */
+        .segmented {
+            background: var(--surface-muted);
+            padding: 4px;
+            border-radius: 9px;
+            display: inline-flex;
+            gap: 2px;
+        }
+
+        .segmented label {
+            cursor: pointer;
+            padding: 6px 14px;
+            border-radius: 7px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .segmented label.active {
+            background: var(--surface);
+            color: var(--accent);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .segmented input {
+            display: none;
+        }
+
+        /* Radio chips */
+        .radio-chips {
+            display: inline-flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .radio-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: all 0.15s ease;
+        }
+
+        .radio-chip:hover {
+            border-color: var(--border-strong);
+        }
+
+        .radio-chip input {
+            display: none;
+        }
+
+        .radio-chip.active {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        /* Chip (informational) */
+        .info-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .info-chip svg {
+            width: 14px;
+            height: 14px;
         }
     </style>
 </head>
 
 <body>
 
-    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
 
-    <div class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            Grrmin Sync
+            <div class="sidebar-logo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 11-6.22-8.56"></path>
+                    <polyline points="21 4 21 10 15 10"></polyline>
+                </svg>
+            </div>
+            <div>
+                <div class="sidebar-title">Grrmin Sync</div>
+                <div class="sidebar-subtitle">Withings → Garmin</div>
+            </div>
         </div>
-        <ul class="nav-links">
-            <li><a href="/" class="{{ 'active' if active_page == 'home' else '' }}">🏠 Home</a></li>
-            <li><a href="/credentials" class="{{ 'active' if active_page == 'credentials' else '' }}">🔑 Credentials</a>
-            </li>
-            <li><a href="/history">📜 Sync History</a></li>
-            <li><a href="/historical" class="{{ 'active' if active_page == 'historical' else '' }}">📅 Historical
-                    Import</a></li>
-            <li><a href="/manual" class="{{ 'active' if active_page == 'manual' else '' }}">✍️ Manual Entry</a></li>
-        </ul>
-    </div>
 
-    <div class="main-content">
+        <ul class="nav-links">
+            <li><a href="/" class="{{ 'active' if active_page == 'home' else '' }}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12l9-9 9 9"></path>
+                        <path d="M5 10v10a1 1 0 001 1h3v-6h6v6h3a1 1 0 001-1V10"></path>
+                    </svg>
+                    Dashboard
+                </a></li>
+            <li><a href="/credentials" class="{{ 'active' if active_page == 'credentials' else '' }}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                    </svg>
+                    Credentials
+                </a></li>
+            <li><a href="/history" class="{{ 'active' if active_page == 'history' else '' }}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v5h5"></path>
+                        <path d="M3.05 13A9 9 0 106 5.3L3 8"></path>
+                        <path d="M12 7v5l4 2"></path>
+                    </svg>
+                    Sync History
+                </a></li>
+            <li><a href="/historical" class="{{ 'active' if active_page == 'historical' else '' }}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    Historical Import
+                </a></li>
+            <li><a href="/manual" class="{{ 'active' if active_page == 'manual' else '' }}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+                    </svg>
+                    Manual Entry
+                </a></li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path
+                        d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41">
+                    </path>
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                </svg>
+                <span class="theme-label">Toggle theme</span>
+            </button>
+        </div>
+    </aside>
+
+    <main class="main-content">
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
     <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
-            const body = document.body;
             sidebar.classList.toggle('active');
-            body.classList.toggle('sidebar-open');
+            document.body.classList.toggle('sidebar-open');
         }
 
-        // Close sidebar when clicking outside
+        function toggleTheme() {
+            const root = document.documentElement;
+            const current = root.getAttribute('data-theme') || 'light';
+            const next = current === 'light' ? 'dark' : 'light';
+            root.setAttribute('data-theme', next);
+            try { localStorage.setItem('theme', next); } catch (e) { }
+        }
+
         document.addEventListener('click', function (event) {
             const sidebar = document.getElementById('sidebar');
             const hamburger = document.querySelector('.hamburger');
-            const body = document.body;
-
             if (sidebar.classList.contains('active') &&
                 !sidebar.contains(event.target) &&
                 !hamburger.contains(event.target)) {
-
                 sidebar.classList.remove('active');
-                body.classList.remove('sidebar-open');
+                document.body.classList.remove('sidebar-open');
             }
         });
     </script>
