@@ -164,7 +164,10 @@
             display: flex;
             flex-direction: column;
             position: fixed;
+            top: 0;
+            bottom: 0;
             height: 100vh;
+            height: 100dvh;
             transition: transform 0.3s ease;
             z-index: 1000;
             border-right: 1px solid var(--sidebar-border);
@@ -646,6 +649,7 @@
             height: 6px;
             border-radius: 50%;
             background: currentColor;
+            flex-shrink: 0;
         }
 
         /* Table */
