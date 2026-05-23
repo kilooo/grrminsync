@@ -1,9 +1,6 @@
 # Grrmin Sync - Sync Withings to Garmin Connect
 
-> [!CAUTION]
-> **Disclaimer**: This web app is meant to run privately in your home network. Please use it at your own risk.
-
-A simple tool to sync body composition data (Weight, Fat %, Muscle Mass, etc.) from Withings to Garmin Connect.
+A simple tool to sync body composition data (Weight, Fat %, Muscle Mass, etc.) and blood pressure data from Withings to Garmin Connect.
 
 <p align="center">
   <img src="screenshots/screenshot_mobile_2.png" width="18%" />
