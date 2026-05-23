@@ -10,11 +10,12 @@
         // Apply theme before paint to avoid flash
         (function () {
             try {
-                var t = localStorage.getItem('theme');
-                if (!t) {
-                    t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                var t = localStorage.getItem('theme') || 'system';
+                var themeToApply = t;
+                if (t === 'system') {
+                    themeToApply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                 }
-                document.documentElement.setAttribute('data-theme', t);
+                document.documentElement.setAttribute('data-theme', themeToApply);
             } catch (e) { }
         })();
     </script>
@@ -265,47 +266,61 @@
             border-top: 1px solid var(--sidebar-border);
         }
 
-        .theme-toggle {
-            width: 100%;
-            background: transparent;
-            color: var(--sidebar-text);
+        /* Theme Selector */
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: rgba(0, 0, 0, 0.25);
             border: 1px solid var(--sidebar-border);
-            padding: 9px 12px;
             border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: inherit;
-            font-size: 0.85rem;
-            font-weight: 500;
-            transition: background 0.15s ease;
+            padding: 2px;
+            margin-top: 4px;
         }
 
-        .theme-toggle:hover {
-            background: var(--sidebar-hover);
+        .theme-option {
+            background: transparent;
+            border: none;
+            color: var(--sidebar-text);
+            padding: 7px 0;
+            font-size: 0.76rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+
+        .theme-option svg {
+            width: 14px;
+            height: 14px;
+            opacity: 0.7;
+        }
+
+        .theme-option:hover {
             color: #fff;
         }
 
-        .theme-toggle .icon-sun,
-        .theme-toggle .icon-moon {
-            width: 16px;
-            height: 16px;
+        .theme-option.active {
+            background: var(--sidebar-active);
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
-        :root[data-theme="light"] .theme-toggle .icon-sun {
-            display: block;
+        .theme-option.active svg {
+            opacity: 1;
         }
-
-        :root[data-theme="light"] .theme-toggle .icon-moon {
-            display: none;
-        }
-
-        :root[data-theme="dark"] .theme-toggle .icon-sun {
-            display: none;
-        }
-
-        :root[data-theme="dark"] .theme-toggle .icon-moon {
+        
+        .theme-label-small {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
             display: block;
         }
 
@@ -988,20 +1003,21 @@
         </ul>
 
         <div class="sidebar-footer">
-            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="4"></circle>
-                    <path
-                        d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41">
-                    </path>
-                </svg>
-                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
-                </svg>
-                <span class="theme-label">Toggle theme</span>
-            </button>
+            <span class="theme-label-small">Theme Mode</span>
+            <div class="theme-selector">
+                <button class="theme-option" id="theme-btn-light" onclick="setTheme('light')" title="Light Mode" aria-label="Light Mode">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+                    Light
+                </button>
+                <button class="theme-option" id="theme-btn-dark" onclick="setTheme('dark')" title="Dark Mode" aria-label="Dark Mode">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                    Dark
+                </button>
+                <button class="theme-option" id="theme-btn-system" onclick="setTheme('system')" title="Device Settings" aria-label="Device Settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    Auto
+                </button>
+            </div>
         </div>
     </aside>
 
@@ -1016,13 +1032,44 @@
             document.body.classList.toggle('sidebar-open');
         }
 
-        function toggleTheme() {
-            const root = document.documentElement;
-            const current = root.getAttribute('data-theme') || 'light';
-            const next = current === 'light' ? 'dark' : 'light';
-            root.setAttribute('data-theme', next);
-            try { localStorage.setItem('theme', next); } catch (e) { }
+        function setTheme(theme) {
+            try {
+                localStorage.setItem('theme', theme);
+            } catch (e) { }
+            applyTheme(theme);
         }
+
+        function applyTheme(theme) {
+            const root = document.documentElement;
+            let themeToApply = theme;
+            
+            if (theme === 'system') {
+                themeToApply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            
+            root.setAttribute('data-theme', themeToApply);
+            
+            // Update active buttons in the selector
+            document.querySelectorAll('.theme-option').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`theme-btn-${theme}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+        }
+
+        // Initialize active state on load
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            applyTheme(savedTheme);
+            
+            // Listen to device preference changes to update dynamically if system is selected
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                const currentTheme = localStorage.getItem('theme') || 'system';
+                if (currentTheme === 'system') {
+                    applyTheme('system');
+                }
+            });
+        })();
 
         document.addEventListener('click', function (event) {
             const sidebar = document.getElementById('sidebar');
