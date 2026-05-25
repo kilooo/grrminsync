@@ -1,3 +1,15 @@
+# [1.8.0](https://github.com/kilooo/grrminsync/compare/v1.7.0...v1.8.0) (2026-05-25)
+
+
+### Bug Fixes
+
+* fixed ui elements for mobile ([2ae57d4](https://github.com/kilooo/grrminsync/commit/2ae57d448b27727a49c12515c2ddf14ffd58f50a))
+
+
+### Features
+
+* implemented dynamic connection validation and real-time status feedback for accounts ([1349935](https://github.com/kilooo/grrminsync/commit/134993589810c5eb9409cae3dfec6944a097f784))
+
 # [1.7.0](https://github.com/kilooo/grrminsync/compare/v1.6.0...v1.7.0) (2026-05-12)
 
 
