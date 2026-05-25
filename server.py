@@ -2,6 +2,7 @@ from flask import Flask, render_template_string, request, jsonify, render_templa
 import sys
 import io
 import contextlib
+import requests
 import json
 import os
 import atexit
@@ -227,6 +228,88 @@ def index():
 @app.route('/credentials')
 def credentials_page():
     return render_template('credentials.html', active_page='credentials')
+
+@app.route('/config/status')
+def get_config_status():
+    # 1. Withings Status
+    withings_configured = bool(WITHINGS_CLIENT_ID and WITHINGS_CLIENT_SECRET)
+    withings_authenticated = False
+    withings_error = None
+    
+    if withings_configured:
+        try:
+            token_data = sync_app.load_credentials()
+            if token_data and 'access_token' in token_data:
+                access_token = token_data['access_token']
+                # Make a fast, lightweight call to verify token
+                url = "https://wbsapi.withings.net/measure"
+                headers = {'Authorization': f'Bearer {access_token}'}
+                params = {'action': 'getmeas', 'limit': 1}
+                response = requests.get(url, headers=headers, params=params, timeout=5)
+                
+                if response.status_code == 200:
+                    resp_json = response.json()
+                    status_code = resp_json.get('status')
+                    if status_code == 0:
+                        withings_authenticated = True
+                    elif status_code in [401, 100, 250, 401] or "invalid" in str(resp_json).lower():
+                        # Try to refresh token
+                        refresh_token = token_data.get('refresh_token')
+                        if refresh_token:
+                            try:
+                                auth = sync_app.SimpleWithingsAuth(WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI)
+                                new_token_data = auth.refresh_token(refresh_token)
+                                sync_app.save_credentials(new_token_data)
+                                withings_authenticated = True
+                            except Exception as re:
+                                withings_error = f"Token refresh failed: {str(re)}"
+                        else:
+                            withings_error = "Token expired and no refresh token found."
+                    else:
+                        withings_error = f"API returned status {status_code}"
+                else:
+                    withings_error = f"HTTP status {response.status_code}"
+            else:
+                withings_error = "Access token missing. Please authenticate."
+        except Exception as e:
+            withings_error = f"Error: {str(e)}"
+            
+    # 2. Garmin Status
+    garmin_configured = bool(GARMIN_EMAIL and GARMIN_PASSWORD)
+    garmin_authenticated = False
+    garmin_error = None
+    
+    if garmin_configured:
+        try:
+            token_dir = os.path.join(DATA_DIR, '.garminconnect')
+            if not os.path.exists(token_dir):
+                os.makedirs(token_dir, exist_ok=True)
+                
+            # Initialize Garmin client
+            g = Garmin(GARMIN_EMAIL, GARMIN_PASSWORD)
+            
+            # Fast check: try to login. Garmin's library checks tokenstore first.
+            try:
+                g.login(tokenstore=token_dir)
+            except Exception:
+                g.login(email=GARMIN_EMAIL, password=GARMIN_PASSWORD, tokenstore=token_dir)
+                
+            garmin_authenticated = True
+        except Exception as e:
+            garmin_error = str(e)
+            
+    return jsonify({
+        "withings": {
+            "configured": withings_configured,
+            "authenticated": withings_authenticated,
+            "error": withings_error
+        },
+        "garmin": {
+            "configured": garmin_configured,
+            "authenticated": garmin_authenticated,
+            "error": garmin_error
+        }
+    })
 
 @app.route('/history')
 def view_history():
