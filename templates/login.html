@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grrmin Sync — Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('theme') || 'system';
+                var themeToApply = t === 'system'
+                    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                    : t;
+                document.documentElement.setAttribute('data-theme', themeToApply);
+            } catch (e) { }
+        })();
+    </script>
+    <style>
+        :root {
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --accent-soft: rgba(79, 70, 229, 0.1);
+            --danger: #ef4444;
+            --danger-soft: rgba(239, 68, 68, 0.12);
+        }
+
+        :root[data-theme="light"] {
+            --bg: #f6f7fb;
+            --bg-gradient: radial-gradient(1200px 600px at 100% -10%, rgba(79, 70, 229, 0.08), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(14, 165, 233, 0.06), transparent 60%);
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.04);
+        }
+
+        :root[data-theme="dark"] {
+            --bg: #0a0e1a;
+            --bg-gradient: radial-gradient(1200px 600px at 100% -10%, rgba(79, 70, 229, 0.18), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(14, 165, 233, 0.1), transparent 60%);
+            --surface: #111827;
+            --border: #1f2937;
+            --text: #e5e7eb;
+            --text-muted: #94a3b8;
+            --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            height: 100%;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            background-image: var(--bg-gradient);
+            color: var(--text);
+        }
+
+        .login-wrap {
+            min-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 360px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            padding: 32px 28px;
+        }
+
+        .login-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            margin: 0 auto 16px;
+        }
+
+        h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 0 0 4px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 24px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        input[type="password"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .error-box {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--danger-soft);
+            color: var(--danger);
+            font-size: 0.85rem;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 18px;
+            padding: 11px;
+            border: none;
+            border-radius: 10px;
+            background: var(--accent);
+            color: white;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-wrap">
+        <div class="login-card">
+            <div class="login-logo">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 11-6.22-8.56"></path>
+                    <polyline points="21 4 21 10 15 10"></polyline>
+                </svg>
+            </div>
+            <h1>Grrmin Sync</h1>
+            <p class="subtitle">Please log in to continue</p>
+
+            <form method="POST" action="{{ url_for('login', next=request.args.get('next', '')) }}">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" autocomplete="current-password" autofocus required>
+                {% if error %}
+                <div class="error-box">{{ error }}</div>
+                {% endif %}
+                <button type="submit">Log In</button>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

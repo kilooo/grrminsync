@@ -17,6 +17,9 @@ pip-delete-this-directory.txt
 .vscode/
 .idea/
 
+# AI assistant notes (local only, not part of the public repo)
+CLAUDE.md
+
 # Distribution / Packaging
 build/
 dist/
