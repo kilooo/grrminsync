@@ -1022,6 +1022,19 @@
                     Auto
                 </button>
             </div>
+
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--sidebar-border); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <button id="update-check-btn" onclick="checkForUpdate()" title="Check for updates"
+                    style="background: none; border: none; color: var(--sidebar-text); font-size: 0.75rem; cursor: pointer; padding: 4px 0; display: flex; align-items: center; gap: 6px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-6.22-8.56"></path><polyline points="21 4 21 10 15 10"></polyline></svg>
+                    <span id="update-check-label">Check for updates</span>
+                </button>
+                <a href="/logout" title="Log out"
+                    style="color: var(--sidebar-text); font-size: 0.75rem; text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Logout
+                </a>
+            </div>
         </div>
     </aside>
 
@@ -1085,6 +1098,28 @@
                 document.body.classList.remove('sidebar-open');
             }
         });
+
+        function checkForUpdate() {
+            const label = document.getElementById('update-check-label');
+            label.innerText = 'Checking...';
+            fetch('/system/update-check')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        label.innerText = 'Check failed';
+                        return;
+                    }
+                    if (data.update_available) {
+                        label.innerHTML = `New version ${data.latest} available`;
+                        const btn = document.getElementById('update-check-btn');
+                        btn.onclick = () => window.open(data.release_url, '_blank');
+                        btn.style.color = 'var(--success, #10b981)';
+                    } else {
+                        label.innerText = `Up to date (v${data.current})`;
+                    }
+                })
+                .catch(() => { label.innerText = 'Check failed'; });
+        }
     </script>
     {% block scripts %}{% endblock %}
 </body>

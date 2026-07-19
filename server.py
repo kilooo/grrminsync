@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 import sys
 import io
 import contextlib
@@ -7,6 +7,8 @@ import json
 import os
 import atexit
 import time
+import secrets
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Force immediate log output
 print("DEBUG: Server module loading...", flush=True)
@@ -51,6 +53,44 @@ if not os.path.exists(DATA_DIR):
         print(f"DEBUG: Created data directory at {DATA_DIR}", flush=True)
     except Exception as e:
         print(f"DEBUG: Failed to create data directory. Error type: {type(e).__name__}", flush=True)
+
+# Login Auth Setup
+AUTH_FILE = os.path.join(DATA_DIR, "auth.json")
+SECRET_KEY_FILE = os.path.join(DATA_DIR, "secret_key")
+DEFAULT_PASSWORD = "admin"
+
+def get_or_create_secret_key():
+    if os.path.exists(SECRET_KEY_FILE):
+        with open(SECRET_KEY_FILE, 'r') as f:
+            key = f.read().strip()
+            if key:
+                return key
+    key = secrets.token_hex(32)
+    with open(SECRET_KEY_FILE, 'w') as f:
+        f.write(key)
+    return key
+
+def load_auth():
+    try:
+        with open(AUTH_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+def save_auth(data):
+    with open(AUTH_FILE, 'w') as f:
+        json.dump(data, f)
+
+def init_auth():
+    if not os.path.exists(AUTH_FILE):
+        save_auth({"password_hash": generate_password_hash(DEFAULT_PASSWORD)})
+        print(f"DEBUG: No login password set yet. Default login password is '{DEFAULT_PASSWORD}' "
+              f"- please change it under Credentials after logging in.", flush=True)
+
+init_auth()
+app.secret_key = get_or_create_secret_key()
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 DB_PATH = os.path.join(DATA_DIR, "garmin_import.db")
 
@@ -219,6 +259,84 @@ try:
 except Exception as e:
     print(f"DEBUG: Failed to restore schedule. Error type: {type(e).__name__}", flush=True)
     # Don't exit, just continue without schedule
+
+PUBLIC_ENDPOINTS = {'login', 'logout', 'static'}
+APP_VERSION = "1.8.0"
+GITHUB_REPO = "kilooo/grrminsync"
+
+@app.before_request
+def require_login():
+    if request.endpoint in PUBLIC_ENDPOINTS:
+        return
+    if session.get('authenticated'):
+        return
+    if request.method == 'GET':
+        return redirect(url_for('login', next=request.path))
+    return jsonify({"message": "Not authenticated. Please log in again."}), 401
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        auth_data = load_auth()
+        if auth_data and check_password_hash(auth_data.get('password_hash', ''), password):
+            session['authenticated'] = True
+            next_url = request.args.get('next') or '/'
+            if not next_url.startswith('/') or next_url.startswith('//'):
+                next_url = '/'
+            return redirect(next_url)
+        error = "Incorrect password"
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/account/password', methods=['POST'])
+def change_password():
+    current = request.form.get('current_password', '')
+    new = request.form.get('new_password', '')
+
+    auth_data = load_auth()
+    if not auth_data or not check_password_hash(auth_data.get('password_hash', ''), current):
+        return jsonify({"message": "Current password is incorrect"}), 400
+    if len(new) < 4:
+        return jsonify({"message": "New password must be at least 4 characters"}), 400
+
+    save_auth({"password_hash": generate_password_hash(new)})
+    return jsonify({"message": "Password updated successfully"})
+
+def _version_tuple(v):
+    parts = []
+    for p in v.split('.'):
+        num = ''.join(ch for ch in p if ch.isdigit())
+        parts.append(int(num) if num else 0)
+    return tuple(parts)
+
+@app.route('/system/update-check')
+def check_for_update():
+    try:
+        resp = requests.get(
+            f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
+            timeout=5, headers={"Accept": "application/vnd.github+json"}
+        )
+        if resp.status_code != 200:
+            return jsonify({"current": APP_VERSION, "error": f"GitHub returned status {resp.status_code}"}), 502
+
+        release = resp.json()
+        latest_tag = release.get('tag_name', '').lstrip('v')
+        update_available = bool(latest_tag) and _version_tuple(latest_tag) > _version_tuple(APP_VERSION)
+
+        return jsonify({
+            "current": APP_VERSION,
+            "latest": latest_tag,
+            "update_available": update_available,
+            "release_url": release.get('html_url')
+        })
+    except Exception as e:
+        return jsonify({"current": APP_VERSION, "error": f"Error type: {type(e).__name__}"}), 502
 
 @app.route('/')
 def index():
