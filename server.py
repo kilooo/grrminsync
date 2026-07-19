@@ -782,7 +782,14 @@ def garmin_login_thread(email, password):
         try:
             g.login(tokenstore=token_dir)
         except Exception:
-            g.login(email=email, password=password, tokenstore=token_dir)
+            try:
+                for f in os.listdir(token_dir):
+                    fp = os.path.join(token_dir, f)
+                    if os.path.isfile(fp):
+                        os.unlink(fp)
+            except Exception:
+                pass
+            g.login(tokenstore=token_dir)
         
         GARMIN_AUTH_SESSION['result'] = {'success': True}
     except Exception as e:
