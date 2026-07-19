@@ -7,7 +7,7 @@ import tzlocal
 import config
 from garminconnect import Garmin
 # Import auth logic from sync_app to reuse the manual implementation and token persistence
-from sync_app import authenticate_withings, save_credentials, get_withings_credentials
+from sync_app import authenticate_withings, save_credentials, get_withings_credentials, parse_garmin_timestamp, is_duplicate_bp
 
 def get_measure_value(measure):
     return measure['value'] * (10 ** measure['unit'])
@@ -126,6 +126,27 @@ def sync_data(token_data, garmin_client, days=30, start_date=None, end_date=None
     # Init local timezone
     local_tz = tzlocal.get_localzone()
     
+    # Fetch all existing Garmin blood pressure measurements for the range to avoid duplicate syncs
+    existing_bp_measurements = []
+    if any(any(m['type'] in [9, 10] for m in group['measures']) for group in measuregrps):
+        try:
+            # Find the date range of groups
+            group_dates = [datetime.fromtimestamp(group['date'], timezone.utc).astimezone(local_tz) for group in measuregrps]
+            if group_dates:
+                start_date_str = min(group_dates).strftime('%Y-%m-%d')
+                end_date_str = max(group_dates).strftime('%Y-%m-%d')
+                print(f"\nChecking Garmin for existing blood pressure entries from {start_date_str} to {end_date_str}...")
+                existing_data = garmin_client.get_blood_pressure(start_date_str, end_date_str)
+                if existing_data and "measurementSummaries" in existing_data:
+                    existing_bp_measurements = [
+                        metric 
+                        for x in existing_data["measurementSummaries"] 
+                        for metric in x.get("measurements", [])
+                    ]
+                print(f"  Found {len(existing_bp_measurements)} existing blood pressure records on Garmin.")
+        except Exception as e:
+            print(f"  Warning: Could not fetch existing Garmin blood pressure records. Error: {e}")
+            
     # Process ALL groups found
     for i, group in enumerate(measuregrps):
         if progress_callback:
@@ -202,17 +223,22 @@ def sync_data(token_data, garmin_client, days=30, start_date=None, end_date=None
         # --- UPLOAD BLOOD PRESSURE ---
         if systolic and diastolic:
             print(f"  BP: {systolic}/{diastolic} mmHg, HR: {heart_rate}")
-            try:
-                garmin_client.set_blood_pressure(
-                    systolic=systolic,
-                    diastolic=diastolic,
-                    pulse=heart_rate,
-                    timestamp=dt_local.isoformat()
-                )
-                print(f"  Successfully synced Blood Pressure.")
+            
+            if is_duplicate_bp(dt, systolic, diastolic, heart_rate, existing_bp_measurements):
+                print("  Blood pressure measurement already synced. Skipping.")
                 group_success = True
-            except Exception as e:
-                print(f"  Failed to upload Blood Pressure. Error type: {type(e).__name__}")
+            else:
+                try:
+                    garmin_client.set_blood_pressure(
+                        systolic=systolic,
+                        diastolic=diastolic,
+                        pulse=heart_rate,
+                        timestamp=dt_local.isoformat()
+                    )
+                    print(f"  Successfully synced Blood Pressure.")
+                    group_success = True
+                except Exception as e:
+                    print(f"  Failed to upload Blood Pressure. Error type: {type(e).__name__}")
 
         if group_success:
             success_count += 1
@@ -268,7 +294,14 @@ def run_historical_sync(days=30, from_date=None, to_date=None, progress_callback
         try:
             garmin.login(tokenstore=token_dir)
         except Exception:
-            garmin.login(email=config.GARMIN_EMAIL, password=config.GARMIN_PASSWORD, tokenstore=token_dir)
+            try:
+                for f in os.listdir(token_dir):
+                    fp = os.path.join(token_dir, f)
+                    if os.path.isfile(fp):
+                        os.unlink(fp)
+            except Exception:
+                pass
+            garmin.login(tokenstore=token_dir)
     except Exception as e:
         print(f"Garmin Auth Failed. Check credentials. Error type: {type(e).__name__}")
         return

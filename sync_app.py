@@ -162,6 +162,41 @@ def authenticate_withings():
         
     return get_withings_credentials()
 
+def parse_garmin_timestamp(ts_str):
+    if not ts_str:
+        return None
+    if not ts_str.endswith('Z') and '+' not in ts_str and '-' not in ts_str[10:]:
+        ts_str = ts_str + 'Z'
+    try:
+        ts_str = ts_str.replace(' ', 'T')
+        return datetime.fromisoformat(ts_str)
+    except Exception:
+        return None
+
+def is_duplicate_bp(withings_dt_utc, withings_systolic, withings_diastolic, withings_pulse, existing_measurements, max_time_diff_seconds=300):
+    for metric in existing_measurements:
+        systolic = metric.get("systolic")
+        diastolic = metric.get("diastolic")
+        pulse = metric.get("pulse")
+        
+        if systolic != withings_systolic or diastolic != withings_diastolic:
+            continue
+            
+        if withings_pulse is not None and pulse is not None:
+            if pulse != withings_pulse:
+                continue
+                
+        gmt_str = metric.get("measurementTimestampGMT")
+        garmin_dt = parse_garmin_timestamp(gmt_str)
+        if garmin_dt:
+            if garmin_dt.tzinfo is None:
+                garmin_dt = garmin_dt.replace(tzinfo=timezone.utc)
+            
+            diff = abs((garmin_dt - withings_dt_utc).total_seconds())
+            if diff <= max_time_diff_seconds:
+                return True
+    return False
+
 def get_measure_value(measure):
     """
     Helper to calculate the real value from value and unit.
@@ -367,21 +402,30 @@ def sync_data(token_data, garmin_client):
             if heart_rate: print(f"  Heart Rate: {heart_rate} bpm")
             
             try:
-                # Garmin usually expects a timestamp.
-                # set_blood_pressure(self, systolic: int, diastolic: int, pulse: int, timestamp: str = '', notes: str = '')
+                date_str = dt_local_bp.strftime('%Y-%m-%d')
+                print(f"  Checking Garmin for existing blood pressure entries on {date_str}...")
+                existing_data = garmin_client.get_blood_pressure(date_str)
+                existing_measurements = []
+                if existing_data and "measurementSummaries" in existing_data:
+                    existing_measurements = [
+                        metric 
+                        for x in existing_data["measurementSummaries"] 
+                        for metric in x.get("measurements", [])
+                    ]
                 
-                print(f"  Uploading Blood Pressure to Garmin at {dt_local_bp.isoformat()}...")
-                
-                garmin_client.set_blood_pressure(
-                    systolic=systolic,
-                    diastolic=diastolic,
-                    pulse=heart_rate,
-                    timestamp=dt_local_bp.isoformat()
-                )
-
-                print(f"  Successfully synced Blood Pressure to Garmin!")
+                if is_duplicate_bp(dt_bp, systolic, diastolic, heart_rate, existing_measurements):
+                    print("  Blood pressure measurement already synced to Garmin. Skipping.")
+                else:
+                    print(f"  Uploading Blood Pressure to Garmin at {dt_local_bp.isoformat()}...")
+                    garmin_client.set_blood_pressure(
+                        systolic=systolic,
+                        diastolic=diastolic,
+                        pulse=heart_rate,
+                        timestamp=dt_local_bp.isoformat()
+                    )
+                    print(f"  Successfully synced Blood Pressure to Garmin!")
             except Exception as e:
-                print(f"  Failed to upload Blood Pressure to Garmin. Error type: {type(e).__name__} {e}")
+                print(f"  Failed to upload/check Blood Pressure to Garmin. Error type: {type(e).__name__} {e}")
 
         else:
              print("  Skipping BP group (Incomplete data).")
@@ -417,7 +461,14 @@ def main():
         try:
             garmin.login(tokenstore=token_dir)
         except Exception:
-            garmin.login(email=config.GARMIN_EMAIL, password=config.GARMIN_PASSWORD, tokenstore=token_dir)
+            try:
+                for f in os.listdir(token_dir):
+                    fp = os.path.join(token_dir, f)
+                    if os.path.isfile(fp):
+                        os.unlink(fp)
+            except Exception:
+                pass
+            garmin.login(tokenstore=token_dir)
     except Exception as e:
         print(f"Garmin Auth Failed. Check credentials. Error type: {type(e).__name__}")
         return
@@ -446,7 +497,14 @@ def upload_manual_data(weight, fat_ratio=None, muscle_mass=None, bone_mass=None,
         try:
             garmin.login(tokenstore=token_dir)
         except Exception:
-            garmin.login(email=config.GARMIN_EMAIL, password=config.GARMIN_PASSWORD, tokenstore=token_dir)
+            try:
+                for f in os.listdir(token_dir):
+                    fp = os.path.join(token_dir, f)
+                    if os.path.isfile(fp):
+                        os.unlink(fp)
+            except Exception:
+                pass
+            garmin.login(tokenstore=token_dir)
         
         if not timestamp:
             local_tz = tzlocal.get_localzone()
