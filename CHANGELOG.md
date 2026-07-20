@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/kilooo/grrminsync/compare/v1.8.0...v1.9.0) (2026-07-20)
+
+
+### Features
+
+* add app login and update checker ([c607b67](https://github.com/kilooo/grrminsync/commit/c607b672a759fbfa4c20636deb1ee9a773d12289))
+
 # [1.8.0](https://github.com/kilooo/grrminsync/compare/v1.7.0...v1.8.0) (2026-05-25)
 
 
