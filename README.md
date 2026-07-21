@@ -81,7 +81,7 @@ You will need to configure your credentials in the Web UI.
 6.  You will now see your **Client ID** and **Consumer Secret** (Client Secret). Keep this page open.
 
 ### Step 2: Configure the App
-
+The default password for web app is "admin".
 1.  In the Web UI (http://<YOUR_SERVER_IP>:5000), click on **Credentials**.
 2.  **Garmin Configuration**:
     -   Enter your Garmin Connect email and password.

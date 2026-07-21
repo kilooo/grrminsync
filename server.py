@@ -5,6 +5,7 @@ import contextlib
 import requests
 import json
 import os
+import re
 import atexit
 import time
 import secrets
@@ -261,7 +262,20 @@ except Exception as e:
     # Don't exit, just continue without schedule
 
 PUBLIC_ENDPOINTS = {'login', 'logout', 'static'}
-APP_VERSION = "1.8.0"
+def get_app_version():
+    changelog_path = os.path.join(os.path.dirname(__file__), "CHANGELOG.md")
+    if os.path.exists(changelog_path):
+        try:
+            with open(changelog_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    match = re.search(r'^#+\s+\[?([0-9]+\.[0-9]+\.[0-9]+)\]?', line)
+                    if match:
+                        return match.group(1)
+        except Exception:
+            pass
+    return "1.9.0" # Fallback version
+
+APP_VERSION = get_app_version()
 GITHUB_REPO = "kilooo/grrminsync"
 
 @app.before_request

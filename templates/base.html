@@ -1101,8 +1101,9 @@
 
         function checkForUpdate() {
             const label = document.getElementById('update-check-label');
+            const btn = document.getElementById('update-check-btn');
             label.innerText = 'Checking...';
-            fetch('/system/update-check')
+            fetch('/system/update-check?t=' + Date.now(), { cache: 'no-store' })
                 .then(r => r.json())
                 .then(data => {
                     if (data.error) {
@@ -1111,15 +1112,34 @@
                     }
                     if (data.update_available) {
                         label.innerHTML = `New version ${data.latest} available`;
-                        const btn = document.getElementById('update-check-btn');
                         btn.onclick = () => window.open(data.release_url, '_blank');
                         btn.style.color = 'var(--success, #10b981)';
                     } else {
                         label.innerText = `Up to date (v${data.current})`;
+                        btn.onclick = checkForUpdate;
+                        btn.style.color = 'var(--sidebar-text)';
                     }
                 })
                 .catch(() => { label.innerText = 'Check failed'; });
         }
+
+        // Auto-check for updates silently on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/system/update-check?t=' + Date.now(), { cache: 'no-store' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.update_available) {
+                        const label = document.getElementById('update-check-label');
+                        const btn = document.getElementById('update-check-btn');
+                        if (label && btn) {
+                            label.innerHTML = `New version ${data.latest} available`;
+                            btn.onclick = () => window.open(data.release_url, '_blank');
+                            btn.style.color = 'var(--success, #10b981)';
+                        }
+                    }
+                })
+                .catch(() => {});
+        });
     </script>
     {% block scripts %}{% endblock %}
 </body>
