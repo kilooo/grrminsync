@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/kilooo/grrminsync/compare/v1.9.0...v1.9.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* updated update checker function to dynamically check for current version of web app. ([c90b901](https://github.com/kilooo/grrminsync/commit/c90b90162d34cfeafe80617cb66dae6b46be4a7a))
+
 # [1.9.0](https://github.com/kilooo/grrminsync/compare/v1.8.0...v1.9.0) (2026-07-20)
 
 
