@@ -8,6 +8,7 @@ on:
       - 'README.md'
       - '.github/**'
       - 'screenshots/**'
+  workflow_dispatch:
 
 permissions:
   contents: write
