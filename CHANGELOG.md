@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/kilooo/grrminsync/compare/v1.9.1...v1.9.2) (2026-07-21)
+
+
+### Bug Fixes
+
+* fixed tagging issue for docker images ([bf8e77d](https://github.com/kilooo/grrminsync/commit/bf8e77d0b0ec54abe2c0a8962738cf5b4cb42c67))
+
 ## [1.9.1](https://github.com/kilooo/grrminsync/compare/v1.9.0...v1.9.1) (2026-07-21)
 
 
