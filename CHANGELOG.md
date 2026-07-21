@@ -1,3 +1,10 @@
+## [1.9.3](https://github.com/kilooo/grrminsync/compare/v1.9.2...v1.9.3) (2026-07-21)
+
+
+### Bug Fixes
+
+* added tagging for manual workflow_dispatch ([c391613](https://github.com/kilooo/grrminsync/commit/c3916135e50077958a1aaf0c8a61ec7e99192f3f))
+
 ## [1.9.2](https://github.com/kilooo/grrminsync/compare/v1.9.1...v1.9.2) (2026-07-21)
 
 
