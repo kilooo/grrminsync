@@ -10,8 +10,9 @@ ENV PYTHONUNBUFFERED=1
 # Copy requirements first to leverage cache
 COPY requirements.txt .
 
-# Install system dependencies (tzdata for timezone support)
-RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
+# Install system dependencies (tzdata for timezone, bluez & git for BLE scale support)
+RUN apt-get update && apt-get install -y tzdata bluez git && rm -rf /var/lib/apt/lists/*
+
 
 RUN pip install --no-cache-dir -r requirements.txt
 

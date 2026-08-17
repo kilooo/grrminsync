@@ -1,7 +1,9 @@
-
 garminconnect>=0.3.0
 python-dotenv
 requests
 flask
 tzlocal
 Flask-APScheduler
+bleak>=0.22.0
+cryptography>=42.0.0
+xiaomi-s400-live @ git+https://github.com/nokistin/xiaomi-s400-live.git

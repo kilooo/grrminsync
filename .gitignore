@@ -33,3 +33,10 @@ data/
 
 # Docker-Compose
 docker-compose.yml
+
+# Xiaomi Scale Configuration & Cache
+xiaomi_scale_config.json
+xiaomi_scale_config*.json
+.s400_cache.json
+credentials.json
+
