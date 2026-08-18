@@ -19,14 +19,18 @@ from apscheduler.triggers.cron import CronTrigger
 import sync_app
 from datetime import datetime
 import tzlocal
+import config
 from config import WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI, GARMIN_EMAIL, GARMIN_PASSWORD
+
 
 import sync_historical
 import sqlite3
 import threading
 from garminconnect import Garmin
+import xiaomi_sync
 
 GARMIN_AUTH_SESSION = None
+
 
 
 print("DEBUG: Imports complete. Initializing App...", flush=True)
@@ -261,7 +265,7 @@ except Exception as e:
     print(f"DEBUG: Failed to restore schedule. Error type: {type(e).__name__}", flush=True)
     # Don't exit, just continue without schedule
 
-PUBLIC_ENDPOINTS = {'login', 'logout', 'static'}
+PUBLIC_ENDPOINTS = {'login', 'logout', 'static', 'ingest_xiaomi_measurement'}
 def get_app_version():
     changelog_path = os.path.join(os.path.dirname(__file__), "CHANGELOG.md")
     if os.path.exists(changelog_path):
@@ -430,6 +434,9 @@ def get_config_status():
         except Exception as e:
             garmin_error = str(e)
             
+    # 3. Xiaomi S400 Status
+    xiaomi_status = xiaomi_sync.XIAOMI_WORKER.get_status()
+
     return jsonify({
         "withings": {
             "configured": withings_configured,
@@ -440,8 +447,10 @@ def get_config_status():
             "configured": garmin_configured,
             "authenticated": garmin_authenticated,
             "error": garmin_error
-        }
+        },
+        "xiaomi": xiaomi_status
     })
+
 
 @app.route('/history')
 def view_history():
@@ -894,6 +903,95 @@ def save_garmin_config():
     GARMIN_AUTH_SESSION = None
     return jsonify({"message": "Timeout connecting to Garmin (Backend)."}), 504
 
+@app.route('/config/xiaomi', methods=['POST'])
+def save_xiaomi_config():
+    mac = request.form.get('mac_address', '').strip()
+    bindkey = xiaomi_sync.sanitize_hex(request.form.get('bindkey', ''))
+    token = xiaomi_sync.sanitize_hex(request.form.get('token', ''))
+    sex = request.form.get('sex', 'male').lower()
+    age = request.form.get('age', '30')
+    height = request.form.get('height', '180')
+    target_weight = request.form.get('target_weight', '').strip()
+    weight_tolerance = request.form.get('weight_tolerance', '5.0').strip()
+    enabled = request.form.get('enabled', 'true').lower() in ('true', '1', 'on', 'yes')
+
+    if enabled and (not mac or not bindkey or not token):
+        return jsonify({"message": "MAC Address, BindKey, and Token are required to enable Xiaomi Scale sync."}), 400
+
+    try:
+        creds_path = os.path.join(DATA_DIR, 'credentials.json')
+        creds = {}
+        if os.path.exists(creds_path):
+            try:
+                with open(creds_path, 'r') as f:
+                    creds = json.load(f)
+            except Exception:
+                pass
+
+        creds["xiaomi_mac"] = mac
+        creds["xiaomi_bindkey"] = bindkey
+        creds["xiaomi_token"] = token
+        creds["xiaomi_sex"] = sex
+        creds["xiaomi_age"] = int(age) if age else 30
+        creds["xiaomi_height"] = int(height) if height else 180
+        creds["xiaomi_target_weight"] = float(target_weight) if target_weight else None
+        creds["xiaomi_weight_tolerance"] = float(weight_tolerance) if weight_tolerance else 5.0
+        creds["xiaomi_enabled"] = enabled
+
+        with open(creds_path, 'w') as f:
+            json.dump(creds, f)
+
+        config.reload_config()
+
+        if enabled:
+            xiaomi_sync.XIAOMI_WORKER.restart()
+            return jsonify({"message": "Xiaomi Scale configuration saved and listener started!"})
+        else:
+            xiaomi_sync.XIAOMI_WORKER.stop()
+            return jsonify({"message": "Xiaomi Scale configuration saved (Listener Disabled)."})
+    except Exception as e:
+        return jsonify({"message": f"Error saving Xiaomi configuration: {str(e)}"}), 500
+
+
+@app.route('/api/scale/xiaomi/ingest', methods=['POST'])
+def ingest_xiaomi_measurement():
+    data = request.json or {}
+    try:
+        weight = float(data.get('weight', 0))
+        if weight <= 0:
+            return jsonify({"status": "error", "message": "Invalid or missing weight value."}), 400
+
+        comp = {
+            "fat_percent": float(data['fat_percent']) if data.get('fat_percent') is not None else None,
+            "muscle_mass_kg": float(data['muscle_mass_kg']) if data.get('muscle_mass_kg') is not None else None,
+            "water_percent": float(data['water_percent']) if data.get('water_percent') is not None else None,
+            "bone_mass_kg": float(data['bone_mass_kg']) if data.get('bone_mass_kg') is not None else None,
+            "visceral_fat": float(data['visceral_fat']) if data.get('visceral_fat') is not None else None,
+            "bmi": float(data['bmi']) if data.get('bmi') is not None else None,
+        }
+
+        ts_raw = data.get('timestamp')
+        ts_dt = None
+        if ts_raw:
+            try:
+                ts_dt = datetime.fromisoformat(ts_raw)
+            except Exception:
+                pass
+
+        success, log = xiaomi_sync.upload_body_composition_to_garmin(weight, comp, ts_dt)
+        status_str = "Xiaomi Scale Ingest (Success)" if success else "Xiaomi Scale Ingest (Upload Failed)"
+        xiaomi_sync.append_history(status_str, log)
+
+        if success:
+            return jsonify({"status": "success", "message": "Measurement uploaded to Garmin Connect."})
+        else:
+            return jsonify({"status": "error", "message": log}), 500
+    except Exception as e:
+        err_msg = f"Error processing ingest: {type(e).__name__}: {e}"
+        xiaomi_sync.append_history("Xiaomi Scale Ingest (Failed)", err_msg)
+        return jsonify({"status": "error", "message": err_msg}), 400
+
+
 @app.route('/config/clear', methods=['POST'])
 def clear_all_credentials():
     try:
@@ -916,6 +1014,9 @@ def clear_all_credentials():
         garth_dir = os.path.join(DATA_DIR, '.garth')
         if os.path.exists(garth_dir):
             shutil.rmtree(garth_dir, ignore_errors=True)
+
+        # Stop xiaomi worker
+        xiaomi_sync.XIAOMI_WORKER.stop()
             
         # Reset runtime globals
         import config
@@ -924,6 +1025,10 @@ def clear_all_credentials():
         config.WITHINGS_REDIRECT_URI = "http://localhost:5000/auth/withings/callback"
         config.GARMIN_EMAIL = ""
         config.GARMIN_PASSWORD = ""
+        config.XIAOMI_MAC = ""
+        config.XIAOMI_BINDKEY = ""
+        config.XIAOMI_TOKEN = ""
+        config.XIAOMI_ENABLED = False
         
         global WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI, GARMIN_EMAIL, GARMIN_PASSWORD
         WITHINGS_CLIENT_ID = ""
@@ -939,6 +1044,15 @@ def clear_all_credentials():
     except Exception as e:
         return jsonify({"message": f"Error clearing credentials: {str(e)}"}), 500
 
+# Start Xiaomi Scale background worker if enabled
+try:
+    if config.XIAOMI_ENABLED:
+        print("DEBUG: Starting Xiaomi Scale BLE background worker...", flush=True)
+        xiaomi_sync.XIAOMI_WORKER.start()
+except Exception as e:
+    print(f"DEBUG: Failed to start Xiaomi Scale worker on launch: {e}", flush=True)
+
 if __name__ == '__main__':
     print("Starting server on 0.0.0.0:5000", flush=True)
     app.run(host='0.0.0.0', port=5000)
+

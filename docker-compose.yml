@@ -11,6 +11,11 @@ services:
       # 2. credentials.json (Your Keys)
       # 3. withings_tokens.pkl (Session Tokens)
       - ./data:/app/data
+      # OPTIONAL for Raspberry Pi / Linux BLE Scale sync:
+      # - /var/run/dbus:/var/run/dbus:ro
+    # For Raspberry Pi / Linux Bluetooth scale support, uncomment network_mode & privileged:
+    # network_mode: host
+    # privileged: true
     environment:
       # Set your local Timezone e.g. Europe/Berlin
       - TZ=America/New_York
@@ -21,4 +26,9 @@ services:
       - WITHINGS_REDIRECT_URI
       - GARMIN_EMAIL
       - GARMIN_PASSWORD
+      - XIAOMI_MAC
+      - XIAOMI_BINDKEY
+      - XIAOMI_TOKEN
+      - XIAOMI_ENABLED
     restart: unless-stopped
+
