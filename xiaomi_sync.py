@@ -253,12 +253,10 @@ class XiaomiScaleWorker:
                             self.state = "syncing"
                             self.message = f"Processing measurement: {event.weight_kg:.2f} kg"
                             weight = event.weight_kg
-                            ts = (
-                                datetime.fromtimestamp(event.timestamp, timezone.utc)
-                                if event.timestamp
-                                else datetime.now(timezone.utc)
-                            )
+                            # Use exact current time for live weigh-in
+                            ts = datetime.now(timezone.utc)
                             comp = event.body_composition or {}
+
 
                             # Multi-User weight filtering
                             target_weight = config.XIAOMI_TARGET_WEIGHT

@@ -171,8 +171,9 @@ async def listen_for_scale(mac: str, bindkey: bytes, token: bytes, profile: User
                         print("  🎉 MEASUREMENT COMPLETED!")
                         print("=" * 60)
                         weight = event.weight_kg
-                        ts = datetime.fromtimestamp(event.timestamp, timezone.utc) if event.timestamp else datetime.now(timezone.utc)
+                        ts = datetime.now(timezone.utc)
                         print(f" Timestamp     : {ts.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
                         print(f" Weight        : {weight:.2f} kg")
                         if event.impedance_ohm:
                             print(f" Impedance     : {event.impedance_ohm:.1f} Ω (Low: {event.impedance_low_ohm or 0:.1f} Ω)")
