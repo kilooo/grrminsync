@@ -237,6 +237,9 @@ def run_sync_logic(target_func=sync_app.main, progress_dict=None, *args, **kwarg
     return status, output
 
 def scheduled_sync_job():
+    if not getattr(config, 'WITHINGS_ENABLED', True):
+        print("Scheduled sync skipped: Withings is disabled in configuration.")
+        return
     print(f"Running scheduled sync...")
     status, output = run_sync_logic(target_func=sync_app.main)
     append_history(f"Scheduled ({status})", output)
@@ -368,6 +371,7 @@ def credentials_page():
 @app.route('/config/status')
 def get_config_status():
     # 1. Withings Status
+    withings_enabled = bool(getattr(config, 'WITHINGS_ENABLED', True))
     withings_configured = bool(WITHINGS_CLIENT_ID and WITHINGS_CLIENT_SECRET)
     withings_authenticated = False
     withings_error = None
@@ -376,35 +380,39 @@ def get_config_status():
         try:
             token_data = sync_app.load_credentials()
             if token_data and 'access_token' in token_data:
-                access_token = token_data['access_token']
-                # Make a fast, lightweight call to verify token
-                url = "https://wbsapi.withings.net/measure"
-                headers = {'Authorization': f'Bearer {access_token}'}
-                params = {'action': 'getmeas', 'limit': 1}
-                response = requests.get(url, headers=headers, params=params, timeout=5)
-                
-                if response.status_code == 200:
-                    resp_json = response.json()
-                    status_code = resp_json.get('status')
-                    if status_code == 0:
-                        withings_authenticated = True
-                    elif status_code in [401, 100, 250, 401] or "invalid" in str(resp_json).lower():
-                        # Try to refresh token
-                        refresh_token = token_data.get('refresh_token')
-                        if refresh_token:
-                            try:
-                                auth = sync_app.SimpleWithingsAuth(WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI)
-                                new_token_data = auth.refresh_token(refresh_token)
-                                sync_app.save_credentials(new_token_data)
-                                withings_authenticated = True
-                            except Exception as re:
-                                withings_error = f"Token refresh failed: {str(re)}"
+                if withings_enabled:
+                    access_token = token_data['access_token']
+                    # Make a fast, lightweight call to verify token
+                    url = "https://wbsapi.withings.net/measure"
+                    headers = {'Authorization': f'Bearer {access_token}'}
+                    params = {'action': 'getmeas', 'limit': 1}
+                    response = requests.get(url, headers=headers, params=params, timeout=5)
+                    
+                    if response.status_code == 200:
+                        resp_json = response.json()
+                        status_code = resp_json.get('status')
+                        if status_code == 0:
+                            withings_authenticated = True
+                        elif status_code in [401, 100, 250, 401] or "invalid" in str(resp_json).lower():
+                            # Try to refresh token
+                            refresh_token = token_data.get('refresh_token')
+                            if refresh_token:
+                                try:
+                                    auth = sync_app.SimpleWithingsAuth(WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI)
+                                    new_token_data = auth.refresh_token(refresh_token)
+                                    sync_app.save_credentials(new_token_data)
+                                    withings_authenticated = True
+                                except Exception as re:
+                                    withings_error = f"Token refresh failed: {str(re)}"
+                            else:
+                                withings_error = "Token expired and no refresh token found."
                         else:
-                            withings_error = "Token expired and no refresh token found."
+                            withings_error = f"API returned status {status_code}"
                     else:
-                        withings_error = f"API returned status {status_code}"
+                        withings_error = f"HTTP status {response.status_code}"
                 else:
-                    withings_error = f"HTTP status {response.status_code}"
+                    # Configured but disabled
+                    withings_authenticated = True
             else:
                 withings_error = "Access token missing. Please authenticate."
         except Exception as e:
@@ -439,6 +447,7 @@ def get_config_status():
 
     return jsonify({
         "withings": {
+            "enabled": withings_enabled,
             "configured": withings_configured,
             "authenticated": withings_authenticated,
             "error": withings_error
@@ -513,6 +522,9 @@ def _run_sync_thread(days, **kwargs):
 def run_historical_sync_endpoint():
     global SYNC_PROGRESS
     
+    if not getattr(config, 'WITHINGS_ENABLED', True):
+        return jsonify({"status": "error", "message": "Withings is disabled. Please enable Withings in Configuration first."}), 400
+
     if SYNC_PROGRESS['status'] == 'running':
         return jsonify({"status": "error", "message": "A sync job is already running."}), 400
 
@@ -533,10 +545,11 @@ def get_progress():
 
 @app.route('/sync', methods=['POST'])
 def run_sync():
-    # Helper for manual sync to also block manual runs if a historical one is running?
-    # For now, let's allow them to overlap or fail naturally, but ideally we should lock.
-    # But simple is fine.
-    
+    if not getattr(config, 'WITHINGS_ENABLED', True):
+        msg = "Withings sync is disabled in Configuration."
+        append_history("Manual (Skipped)", msg)
+        return jsonify({"status": "Disabled", "output": msg, "message": msg}), 400
+        
     status, output = run_sync_logic(sync_app.main)
     
     # Save to history
@@ -700,42 +713,45 @@ def auth_withings_callback():
 
 @app.route('/config/withings', methods=['POST'])
 def save_withings_config():
-    client_id = request.form.get('client_id')
-    client_secret = request.form.get('client_secret')
-    redirect_uri = request.form.get('redirect_uri')
-    
-    if not client_id or not client_secret:
-        return jsonify({"message": "Client ID and Secret are required"}), 400
-        
+    client_id_input = request.form.get('client_id', '').strip()
+    client_secret_input = request.form.get('client_secret', '').strip()
+    redirect_uri = request.form.get('redirect_uri', '').strip()
+    enabled_str = request.form.get('enabled')
+    enabled = enabled_str.lower() in ('true', '1', 'on', 'yes') if enabled_str is not None else getattr(config, 'WITHINGS_ENABLED', True)
+
     try:
-        # Load existing creds (to preserve garmin if it exists)
+        os.makedirs(DATA_DIR, exist_ok=True)
         creds_path = os.path.join(DATA_DIR, 'credentials.json')
         creds = {}
         if os.path.exists(creds_path):
             try:
                 with open(creds_path, 'r') as f:
                     creds = json.load(f)
-            except:
+            except Exception:
                 pass
-                
+
+        client_id = client_id_input or creds.get("withings_client_id") or config.WITHINGS_CLIENT_ID or ""
+        client_secret = client_secret_input or creds.get("withings_client_secret") or config.WITHINGS_CLIENT_SECRET or ""
+
+        if not client_id or not client_secret:
+            return jsonify({"message": "Client ID and Secret are required"}), 400
+
         creds["withings_client_id"] = client_id
         creds["withings_client_secret"] = client_secret
+        creds["withings_enabled"] = enabled
         if redirect_uri:
             creds["withings_redirect_uri"] = redirect_uri
-        
+
         with open(creds_path, 'w') as f:
             json.dump(creds, f)
-            
+
         # Update running config
-        import config
-        config.WITHINGS_CLIENT_ID = client_id
-        config.WITHINGS_CLIENT_SECRET = client_secret
-        if redirect_uri:
-            config.WITHINGS_REDIRECT_URI = redirect_uri
-        
+        config.reload_config()
+
         # Also update global imports in this module
         global WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI
         WITHINGS_CLIENT_ID = client_id
+        WITHINGS_CLIENT_SECRET = client_secret
         WITHINGS_CLIENT_SECRET = client_secret
         if redirect_uri:
             WITHINGS_REDIRECT_URI = redirect_uri
@@ -743,6 +759,66 @@ def save_withings_config():
         return jsonify({"message": "Withings Credentials Saved!"})
     except Exception as e:
         return jsonify({"message": f"Error saving. Error type: {type(e).__name__}"}), 500
+
+@app.route('/config/withings/toggle', methods=['POST'])
+def toggle_withings_config():
+    data = request.get_json(silent=True) or request.form or {}
+    enabled_val = data.get('enabled')
+    if enabled_val is None:
+        new_enabled = not getattr(config, 'WITHINGS_ENABLED', True)
+    else:
+        new_enabled = enabled_val is True or str(enabled_val).lower() in ('true', '1', 'on', 'yes')
+
+    try:
+        creds_path = os.path.join(DATA_DIR, 'credentials.json')
+        creds = {}
+        if os.path.exists(creds_path):
+            try:
+                with open(creds_path, 'r') as f:
+                    creds = json.load(f)
+            except Exception:
+                pass
+        creds["withings_enabled"] = new_enabled
+        with open(creds_path, 'w') as f:
+            json.dump(creds, f)
+
+        config.reload_config()
+        return jsonify({"success": True, "enabled": config.WITHINGS_ENABLED, "message": f"Withings sync {'enabled' if config.WITHINGS_ENABLED else 'disabled'}."})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Error toggling Withings: {str(e)}"}), 500
+
+@app.route('/config/xiaomi/toggle', methods=['POST'])
+def toggle_xiaomi_config():
+    data = request.get_json(silent=True) or request.form or {}
+    enabled_val = data.get('enabled')
+    if enabled_val is None:
+        new_enabled = not getattr(config, 'XIAOMI_ENABLED', False)
+    else:
+        new_enabled = enabled_val is True or str(enabled_val).lower() in ('true', '1', 'on', 'yes')
+
+    try:
+        creds_path = os.path.join(DATA_DIR, 'credentials.json')
+        creds = {}
+        if os.path.exists(creds_path):
+            try:
+                with open(creds_path, 'r') as f:
+                    creds = json.load(f)
+            except Exception:
+                pass
+        creds["xiaomi_enabled"] = new_enabled
+        with open(creds_path, 'w') as f:
+            json.dump(creds, f)
+
+        config.reload_config()
+        if config.XIAOMI_ENABLED:
+            xiaomi_sync.XIAOMI_WORKER.restart()
+            msg = "Xiaomi Scale BLE listener enabled and active."
+        else:
+            xiaomi_sync.XIAOMI_WORKER.stop()
+            msg = "Xiaomi Scale BLE listener disabled."
+        return jsonify({"success": True, "enabled": config.XIAOMI_ENABLED, "message": msg})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Error toggling Xiaomi: {str(e)}"}), 500
 
 def _persist_garmin_creds(email, password):
     # Load existing creds (to preserve withings if it exists)
@@ -905,9 +981,9 @@ def save_garmin_config():
 
 @app.route('/config/xiaomi', methods=['POST'])
 def save_xiaomi_config():
-    mac = request.form.get('mac_address', '').strip()
-    bindkey = xiaomi_sync.sanitize_hex(request.form.get('bindkey', ''))
-    token = xiaomi_sync.sanitize_hex(request.form.get('token', ''))
+    mac_input = request.form.get('mac_address', '').strip()
+    bindkey_input = xiaomi_sync.sanitize_hex(request.form.get('bindkey', ''))
+    token_input = xiaomi_sync.sanitize_hex(request.form.get('token', ''))
     sex = request.form.get('sex', 'male').lower()
     age = request.form.get('age', '30')
     height = request.form.get('height', '180')
@@ -915,10 +991,8 @@ def save_xiaomi_config():
     weight_tolerance = request.form.get('weight_tolerance', '5.0').strip()
     enabled = request.form.get('enabled', 'true').lower() in ('true', '1', 'on', 'yes')
 
-    if enabled and (not mac or not bindkey or not token):
-        return jsonify({"message": "MAC Address, BindKey, and Token are required to enable Xiaomi Scale sync."}), 400
-
     try:
+        os.makedirs(DATA_DIR, exist_ok=True)
         creds_path = os.path.join(DATA_DIR, 'credentials.json')
         creds = {}
         if os.path.exists(creds_path):
@@ -927,6 +1001,14 @@ def save_xiaomi_config():
                     creds = json.load(f)
             except Exception:
                 pass
+
+        # Preserve existing values if fields were left blank in the form
+        mac = mac_input or creds.get("xiaomi_mac") or config.XIAOMI_MAC or ""
+        bindkey = bindkey_input or creds.get("xiaomi_bindkey") or config.XIAOMI_BINDKEY or ""
+        token = token_input or creds.get("xiaomi_token") or config.XIAOMI_TOKEN or ""
+
+        if enabled and (not mac or not bindkey or not token):
+            return jsonify({"message": "MAC Address, BindKey, and Token are required to enable Xiaomi Scale sync."}), 400
 
         creds["xiaomi_mac"] = mac
         creds["xiaomi_bindkey"] = bindkey
@@ -945,7 +1027,7 @@ def save_xiaomi_config():
 
         if enabled:
             xiaomi_sync.XIAOMI_WORKER.restart()
-            return jsonify({"message": "Xiaomi Scale configuration saved and listener started!"})
+            return jsonify({"message": "Xiaomi Scale configuration saved and listener active!"})
         else:
             xiaomi_sync.XIAOMI_WORKER.stop()
             return jsonify({"message": "Xiaomi Scale configuration saved (Listener Disabled)."})
@@ -1023,6 +1105,7 @@ def clear_all_credentials():
         config.WITHINGS_CLIENT_ID = ""
         config.WITHINGS_CLIENT_SECRET = ""
         config.WITHINGS_REDIRECT_URI = "http://localhost:5000/auth/withings/callback"
+        config.WITHINGS_ENABLED = True
         config.GARMIN_EMAIL = ""
         config.GARMIN_PASSWORD = ""
         config.XIAOMI_MAC = ""

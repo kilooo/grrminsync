@@ -435,6 +435,10 @@ def sync_data(token_data, garmin_client):
 def main():
     print("Welcome to the Withings to Garmin Sync Tool!")
     
+    if not getattr(config, 'WITHINGS_ENABLED', True):
+        print("Withings sync is currently disabled in configuration.")
+        return
+
     if not config.WITHINGS_CLIENT_ID or not config.WITHINGS_CLIENT_SECRET:
         print("Error: Withings Credentials not found. Please configure your Withings credentials.")
         return

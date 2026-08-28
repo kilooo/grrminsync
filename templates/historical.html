@@ -9,6 +9,16 @@
 </div>
 
 <div class="card">
+    <div id="withings-disabled-banner" class="fade-in" style="display: none; margin-bottom: 20px; padding: 12px 16px; background: var(--warning-soft); border: 1px solid var(--warning); border-radius: 8px; color: var(--text); font-size: 0.9rem; display: none; align-items: center; gap: 10px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" style="width: 18px; height: 18px; color: var(--warning); flex-shrink: 0;">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span>Withings sync is disabled. <a href="/credentials" class="link" style="font-weight: 600; text-decoration: underline;">Enable Withings in Configuration</a> to import historical data.</span>
+    </div>
+
     <div class="card-header">
         <div class="card-title">
             <div class="card-title-icon">
@@ -99,6 +109,23 @@
 
 <script>
     let pollInterval;
+    let withingsEnabled = true;
+
+    fetch('/config/status')
+        .then(r => r.json())
+        .then(data => {
+            if (data.withings && data.withings.enabled === false) {
+                withingsEnabled = false;
+                const banner = document.getElementById('withings-disabled-banner');
+                if (banner) banner.style.display = 'flex';
+                const btn = document.getElementById('sync-btn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.title = 'Withings sync is disabled in Configuration';
+                }
+            }
+        })
+        .catch(() => {});
 
     function toggleMode() {
         const isDays = document.getElementById('chip-days').querySelector('input').checked;

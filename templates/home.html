@@ -6,6 +6,10 @@
         <h1>Dashboard</h1>
         <p>Manage your daily sync operations.</p>
     </div>
+    <div id="sources-badge-container" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <span id="badge-withings-source" class="badge badge-neutral"><span class="badge-dot"></span>Withings: Checking...</span>
+        <span id="badge-xiaomi-source" class="badge badge-neutral"><span class="badge-dot"></span>Xiaomi: Checking...</span>
+    </div>
 </div>
 
 <!-- Recent History Card -->
@@ -89,13 +93,13 @@
             </div>
             <div>
                 <h2>Manual Sync</h2>
-                <p class="card-desc" style="margin: 2px 0 0;">Trigger an immediate sync of today's weight data.</p>
+                <p id="manual-sync-desc" class="card-desc" style="margin: 2px 0 0;">Trigger an immediate sync of today's Withings data.</p>
             </div>
         </div>
     </div>
 
     <div class="mt-4">
-        <button class="btn" onclick="triggerSync()">
+        <button id="sync-now-btn" class="btn" onclick="triggerSync()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                 stroke-linejoin="round">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -169,10 +173,56 @@
         statusDiv.textContent = 'Starting sync... please wait...';
 
         fetch('/sync', { method: 'POST' })
-            .then(r => r.json())
-            .then(data => { statusDiv.textContent = data.output; })
+            .then(r => r.json().then(data => ({ ok: r.ok, data })))
+            .then(({ ok, data }) => {
+                statusDiv.textContent = data.output || data.message || (ok ? 'Sync completed' : 'Sync failed');
+            })
             .catch(err => { statusDiv.textContent = 'Error: ' + err; });
     }
+
+    function checkActiveSources() {
+        fetch('/config/status')
+            .then(r => r.json())
+            .then(data => {
+                const wBadge = document.getElementById('badge-withings-source');
+                const xBadge = document.getElementById('badge-xiaomi-source');
+                const syncDesc = document.getElementById('manual-sync-desc');
+                const syncBtn = document.getElementById('sync-now-btn');
+
+                if (data.withings) {
+                    if (data.withings.enabled === false) {
+                        wBadge.className = 'badge badge-neutral';
+                        wBadge.innerHTML = '<span class="badge-dot"></span>Withings: Disabled';
+                        if (syncDesc) syncDesc.textContent = 'Withings sync is disabled in Configuration.';
+                    } else if (data.withings.authenticated) {
+                        wBadge.className = 'badge badge-success';
+                        wBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="20 6 9 17 4 12"></polyline></svg>Withings: Active';
+                    } else {
+                        wBadge.className = 'badge badge-warning';
+                        wBadge.innerHTML = '<span class="badge-dot"></span>Withings: Needs Auth';
+                    }
+                }
+
+                if (data.xiaomi) {
+                    if (data.xiaomi.enabled === false) {
+                        xBadge.className = 'badge badge-neutral';
+                        xBadge.innerHTML = '<span class="badge-dot"></span>Xiaomi BLE: Disabled';
+                    } else if (data.xiaomi.state === 'listening' || data.xiaomi.state === 'connected' || data.xiaomi.state === 'syncing') {
+                        xBadge.className = 'badge badge-success';
+                        xBadge.innerHTML = '<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M21 12a9 9 0 11-6.22-8.56"></path></svg>Xiaomi BLE: Active';
+                    } else if (data.xiaomi.configured) {
+                        xBadge.className = 'badge badge-accent';
+                        xBadge.innerHTML = '<span class="badge-dot"></span>Xiaomi BLE: ' + (data.xiaomi.state || 'Ready');
+                    } else {
+                        xBadge.className = 'badge badge-neutral';
+                        xBadge.innerHTML = '<span class="badge-dot"></span>Xiaomi BLE: Not Configured';
+                    }
+                }
+            })
+            .catch(() => {});
+    }
+
+    checkActiveSources();
 
     function updateScheduleDisplay() {
         fetch('/schedule')

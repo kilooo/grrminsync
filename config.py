@@ -32,6 +32,12 @@ WITHINGS_REDIRECT_URI = get_credential('WITHINGS_REDIRECT_URI', 'withings_redire
 if not WITHINGS_REDIRECT_URI:
     WITHINGS_REDIRECT_URI = 'http://localhost:5000/auth/withings/callback'
 
+_withings_enabled = get_credential('WITHINGS_ENABLED', 'withings_enabled')
+if _withings_enabled is None:
+    WITHINGS_ENABLED = True
+else:
+    WITHINGS_ENABLED = bool(_withings_enabled) if isinstance(_withings_enabled, bool) else str(_withings_enabled).lower() in ('true', '1', 'yes', 'on')
+
 # Garmin Credentials
 GARMIN_EMAIL = get_credential('GARMIN_EMAIL', 'garmin_email')
 GARMIN_PASSWORD = get_credential('GARMIN_PASSWORD', 'garmin_password')
@@ -51,11 +57,11 @@ _tol = get_credential('XIAOMI_WEIGHT_TOLERANCE', 'xiaomi_weight_tolerance')
 XIAOMI_WEIGHT_TOLERANCE = float(_tol) if _tol not in (None, '') else 5.0
 
 _enabled = get_credential('XIAOMI_ENABLED', 'xiaomi_enabled')
-XIAOMI_ENABLED = bool(_enabled) if isinstance(_enabled, bool) else str(_enabled).lower() in ('true', '1', 'yes')
+XIAOMI_ENABLED = bool(_enabled) if isinstance(_enabled, bool) else str(_enabled).lower() in ('true', '1', 'yes', 'on')
 
 def reload_config():
     """Reloads variables from environment and credentials.json."""
-    global WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI
+    global WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET, WITHINGS_REDIRECT_URI, WITHINGS_ENABLED
     global GARMIN_EMAIL, GARMIN_PASSWORD
     global XIAOMI_MAC, XIAOMI_BINDKEY, XIAOMI_TOKEN, XIAOMI_SEX, XIAOMI_AGE, XIAOMI_HEIGHT
     global XIAOMI_TARGET_WEIGHT, XIAOMI_WEIGHT_TOLERANCE, XIAOMI_ENABLED
@@ -63,6 +69,12 @@ def reload_config():
     WITHINGS_CLIENT_ID = get_credential('WITHINGS_CLIENT_ID', 'withings_client_id')
     WITHINGS_CLIENT_SECRET = get_credential('WITHINGS_CLIENT_SECRET', 'withings_client_secret')
     WITHINGS_REDIRECT_URI = get_credential('WITHINGS_REDIRECT_URI', 'withings_redirect_uri') or 'http://localhost:5000/auth/withings/callback'
+
+    _w_enabled = get_credential('WITHINGS_ENABLED', 'withings_enabled')
+    if _w_enabled is None:
+        WITHINGS_ENABLED = True
+    else:
+        WITHINGS_ENABLED = bool(_w_enabled) if isinstance(_w_enabled, bool) else str(_w_enabled).lower() in ('true', '1', 'yes', 'on')
 
     GARMIN_EMAIL = get_credential('GARMIN_EMAIL', 'garmin_email')
     GARMIN_PASSWORD = get_credential('GARMIN_PASSWORD', 'garmin_password')
@@ -81,5 +93,6 @@ def reload_config():
     XIAOMI_WEIGHT_TOLERANCE = float(_tol) if _tol not in (None, '') else 5.0
 
     _enabled = get_credential('XIAOMI_ENABLED', 'xiaomi_enabled')
-    XIAOMI_ENABLED = bool(_enabled) if isinstance(_enabled, bool) else str(_enabled).lower() in ('true', '1', 'yes')
+    XIAOMI_ENABLED = bool(_enabled) if isinstance(_enabled, bool) else str(_enabled).lower() in ('true', '1', 'yes', 'on')
+
 
